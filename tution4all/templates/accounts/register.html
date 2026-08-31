@@ -1,0 +1,733 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Register - Tution4All{% endblock %}
+
+{% block content %}
+<!-- Include Select2 CSS for searchable select boxes -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<section class="py-5" style="background: var(--bg-color); min-height: 80vh;">
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-8 text-center">
+                <span class="pill-badge mx-auto mb-3" id="role-badge">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">person_add</span>
+                    Create an Account
+                </span>
+                <h1 class="brand-font fw-bold mb-3" style="font-size: clamp(2rem, 4vw, 3rem); color: var(--text-primary); letter-spacing: -0.02em;">
+                    Join our learning <span style="font-family: var(--font-serif); font-style: italic; font-weight: 400;" id="roleTitleColor">community</span>
+                </h1>
+                <p style="color: var(--text-secondary); max-width: 36rem; margin: 0 auto; font-size: 1.05rem;">
+                    Select your role to personalize your onboarding experience.
+                </p>
+            </div>
+        </div>
+
+        <!-- Role Tabs & Form -->
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <!-- Role Selector -->
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4 p-2 rounded-4" style="background: var(--bg-surface-dim); border: 1px solid var(--border-color);">
+                    <button type="button" class="contact-tab active-student w-100 w-sm-auto flex-grow-1" onclick="setRole('student', this, 'active-student')" id="defaultTab">Student</button>
+                    <button type="button" class="contact-tab w-100 w-sm-auto flex-grow-1" onclick="setRole('parent', this, 'active-parent')">Parent</button>
+                    <button type="button" class="contact-tab w-100 w-sm-auto flex-grow-1" onclick="setRole('teacher', this, 'active-tutor')">Tutor</button>
+                </div>
+
+                <!-- Form Card -->
+                <div class="glow-card p-4 p-md-5">
+                    <form method="post" enctype="multipart/form-data" id="registration-form">
+                        {% csrf_token %}
+                        
+                        <!-- STEP 1: Basic Info -->
+                        <div id="step-1">
+                            {{ form|crispy }}
+                            <div class="d-grid mt-4">
+                                <button type="submit" id="main-btn" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm d-flex align-items-center justify-content-center gap-2 py-3">
+                                    Register <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+                                </button>
+                            </div>
+                        </div>
+                    
+                    <!-- STEP 2: Teacher Course Setup (Hidden by default) -->
+                    <div id="step-2" style="display: none;">
+                        <h4 class="mb-4 text-primary border-bottom pb-2">Tutor Profile Setup</h4>
+                        <div class="mb-4 p-4 border rounded-3 bg-light shadow-sm">
+                            <label class="form-label fw-bold">Intro Video (Optional)</label>
+                            <input type="file" name="profile_video" accept="video/*" class="form-control">
+                            <small class="text-muted">A short introductory video for your public profile.</small>
+                        </div>
+                        
+                        <h4 class="mb-4 text-primary border-bottom pb-2">Setup Your Courses</h4>
+                        
+                        <div id="courses-container">
+                            <!-- Course Block Template (cloned in JS) -->
+                            <div class="course-block border p-4 rounded-3 mb-4 bg-light shadow-sm" data-index="0">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="m-0 text-secondary course-heading">Course #1</h5>
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-course-btn" style="display:none;">
+                                        <i class="bi bi-trash"></i> Remove
+                                    </button>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Select Subject / Course</label>
+                                    <select name="category[]" class="form-select category-select w-100">
+                                        <option value="">Search and select a subject...</option>
+                                        {% for cat in categories %}
+                                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Course Description</label>
+                                    <textarea name="course_description[]" class="form-control" rows="2" placeholder="Brief description of your course offering"></textarea>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">About your teaching style</label>
+                                    <textarea name="about_teaching[]" class="form-control" rows="2" placeholder="How do you teach?"></textarea>
+                                </div>
+                                
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Experience</label>
+                                    <textarea name="experience[]" class="form-control" rows="2" placeholder="Your experience related to this subject"></textarea>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Per student (Hourly) (₹)</label>
+                                        <input type="number" step="0.01" name="hourly_fee[]" class="form-control hourly-fee-input" placeholder="E.g., 500">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Total Duration (hours)</label>
+                                        <input type="number" name="total_duration_hours[]" class="form-control duration-input" placeholder="E.g., 20">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Total Amount (₹)</label>
+                                        <input type="number" step="0.01" name="total_amount[]" class="form-control total-amount-input" readonly placeholder="Auto-calculated">
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Course Intro Video (Optional)</label>
+                                    <input type="file" name="intro_video[]" accept="video/*" class="form-control">
+                                    <small class="text-muted">A short video introducing yourself and the course.</small>
+                                </div>
+                                
+                                <div class="certificates-block mt-4 p-3 border rounded-3 bg-white">
+                                    <label class="form-label fw-bold text-dark">Upload Certificates (PDF/Images)</label>
+                                    <div class="certificate-inputs-wrapper">
+                                        <div class="certificate-entry d-flex gap-2 mb-2">
+                                            <input type="text" name="cert_title_0[]" class="form-control" placeholder="Document Name (e.g. Degree)">
+                                            <input type="file" name="cert_file_0[]" class="form-control">
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary mt-2 rounded-pill add-cert-btn">
+                                        <i class="bi bi-plus-lg"></i> Add Another Document
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-4">
+                            <button type="button" id="add-course-btn" class="btn btn-outline-success rounded-pill fw-bold">
+                                <i class="bi bi-plus-circle"></i> Add Another Course
+                            </button>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between border-top pt-4">
+                            <button type="button" id="prev-btn" class="btn btn-secondary btn-lg rounded-pill fw-bold">Back</button>
+                            <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">Submit Registration</button>
+                        </div>
+                    </div>
+                </form>
+                <div class="mt-4 text-center text-muted" id="login-link-container" style="font-size: 0.95rem;">
+                    Already have an account? <br/>
+                    <a href="{% url 'accounts:login' %}" class="fw-bold text-decoration-none mt-2 d-inline-block" id="loginLink" style="color: var(--primary-color);">Login here</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Include Select2 JS (jQuery is already loaded in base.html) -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Add password toggle to all password inputs
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    passwordInputs.forEach(input => {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+        
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'material-symbols-outlined';
+        toggleIcon.innerHTML = 'visibility_off';
+        toggleIcon.style.position = 'absolute';
+        toggleIcon.style.right = '15px';
+        toggleIcon.style.top = '50%';
+        toggleIcon.style.transform = 'translateY(-50%)';
+        toggleIcon.style.cursor = 'pointer';
+        toggleIcon.style.color = 'var(--text-muted)';
+        toggleIcon.style.zIndex = '10';
+        
+        // Adjust input padding to make room for the icon
+        input.style.paddingRight = '45px';
+        
+        toggleIcon.addEventListener('click', () => {
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleIcon.innerHTML = 'visibility';
+            } else {
+                input.type = 'password';
+                toggleIcon.innerHTML = 'visibility_off';
+            }
+        });
+        
+        wrapper.appendChild(toggleIcon);
+    });
+
+    // File Removal Logic
+    function setupFileRemoval() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            if (!input.classList.contains('file-removal-initialized')) {
+                input.classList.add('file-removal-initialized');
+                
+                input.addEventListener('change', function() {
+                    // Remove existing clear button if any
+                    const existingBtn = this.parentNode.querySelector('.btn-clear-file');
+                    if (existingBtn) existingBtn.remove();
+                    
+                    if (this.files && this.files.length > 0) {
+                        const clearBtn = document.createElement('button');
+                        clearBtn.type = 'button';
+                        clearBtn.className = 'btn btn-sm btn-outline-danger btn-clear-file ms-2';
+                        clearBtn.innerHTML = '<i class="bi bi-x"></i> Remove';
+                        clearBtn.style.padding = '2px 8px';
+                        
+                        clearBtn.onclick = () => {
+                            this.value = '';
+                            clearBtn.remove();
+                        };
+                        
+                        // Insert after the input
+                        this.parentNode.insertBefore(clearBtn, this.nextSibling);
+                        
+                        // If it's a bootstrap group, we might need to handle styling slightly differently
+                        if (this.parentNode.classList.contains('certificate-entry')) {
+                            this.parentNode.appendChild(clearBtn);
+                        } else if (!this.parentNode.classList.contains('d-flex')) {
+                            this.parentNode.classList.add('d-flex', 'align-items-center');
+                        }
+                    }
+                });
+            }
+        });
+    }
+    
+    // Auto Calculate logic
+    function setupAutoCalculate() {
+        const courseBlocks = document.querySelectorAll('.course-block');
+        courseBlocks.forEach(block => {
+            if (!block.classList.contains('calc-initialized')) {
+                block.classList.add('calc-initialized');
+                
+                const hourlyInput = block.querySelector('input[name="hourly_fee[]"]');
+                const durationInput = block.querySelector('input[name="total_duration_hours[]"]');
+                const amountInput = block.querySelector('input[name="total_amount[]"]');
+                
+                if (hourlyInput && durationInput && amountInput) {
+                    amountInput.readOnly = true; // Lock it to auto-calculated value
+                    amountInput.style.backgroundColor = '#f8f9fa';
+                    
+                    const calculateAmount = () => {
+                        const hFee = parseFloat(hourlyInput.value) || 0;
+                        const duration = parseFloat(durationInput.value) || 0;
+                        amountInput.value = (hFee * duration).toFixed(2);
+                    };
+                    
+                    hourlyInput.addEventListener('input', calculateAmount);
+                    durationInput.addEventListener('input', calculateAmount);
+                }
+            }
+        });
+    }
+
+    setupFileRemoval();
+    setupAutoCalculate();
+    
+    // Override add course button to re-initialize
+    const originalAddCourse = document.getElementById('add-course-btn');
+    if (originalAddCourse) {
+        originalAddCourse.addEventListener('click', () => {
+            setTimeout(() => {
+                setupFileRemoval();
+                setupAutoCalculate();
+            }, 100);
+        });
+    }
+    
+    const originalAddCert = document.querySelectorAll('.add-cert-btn');
+    originalAddCert.forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                setupFileRemoval();
+            }, 100);
+        });
+    });
+
+});
+</script>
+
+<script>
+    $(document).ready(function() {
+        // Initialize Select2 on the first category select
+        $('.category-select').select2({
+            placeholder: "Search and select a subject...",
+            allowClear: true,
+            width: '100%'
+        });
+
+        const roleSelect = document.getElementById('id_role');
+        const mainBtn = document.getElementById('main-btn');
+        const step1 = document.getElementById('step-1');
+        const step2 = document.getElementById('step-2');
+        const prevBtn = document.getElementById('prev-btn');
+        const loginLink = document.getElementById('login-link-container');
+        
+        let courseCount = 1;
+
+        // Handle Role Change
+        function handleRoleChange() {
+            if(roleSelect && roleSelect.value === 'teacher') {
+                mainBtn.innerHTML = 'Next <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>';
+                mainBtn.type = 'button';
+            } else {
+                mainBtn.innerHTML = 'Register <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>';
+                mainBtn.type = 'submit';
+            }
+        }
+        
+        window.setRole = function(role, btn, activeClass) {
+            if(roleSelect) {
+                roleSelect.value = role;
+                handleRoleChange();
+            }
+            
+            const tabs = document.querySelectorAll('.contact-tab');
+            tabs.forEach(t => t.classList.remove('active-student', 'active-parent', 'active-tutor'));
+            if(btn) btn.classList.add(activeClass);
+            
+            const titleColor = document.getElementById('roleTitleColor');
+            const roleBadge = document.getElementById('role-badge');
+            
+            if (role === 'student') {
+                mainBtn.style.background = 'var(--gradient-accent)';
+                mainBtn.style.borderColor = 'var(--primary-color)';
+                titleColor.style.color = 'var(--primary-color)';
+                if(loginLink) loginLink.style.color = 'var(--primary-color)';
+                if(roleBadge) roleBadge.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">school</span>Student Registration';
+            } else if (role === 'parent') {
+                mainBtn.style.background = 'var(--color-success)';
+                mainBtn.style.borderColor = 'var(--color-success)';
+                titleColor.style.color = 'var(--color-success)';
+                if(loginLink) loginLink.style.color = 'var(--color-success)';
+                if(roleBadge) roleBadge.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">family_restroom</span>Parent Registration';
+            } else if (role === 'teacher') {
+                mainBtn.style.background = 'var(--color-warning)';
+                mainBtn.style.borderColor = 'var(--color-warning)';
+                titleColor.style.color = 'var(--color-warning)';
+                if(loginLink) loginLink.style.color = 'var(--color-warning)';
+                if(roleBadge) roleBadge.innerHTML = '<span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; margin-right: 4px;">cast_for_education</span>Tutor Registration';
+            }
+            
+            if(loginLink) {
+                const linkAnchor = loginLink.querySelector('a');
+                if (linkAnchor) {
+                    linkAnchor.href = "{% url 'accounts:login' %}?role=" + role;
+                }
+            }
+        };
+
+        const urlParams = new URLSearchParams(window.location.search);
+        let currentRole = 'student';
+        if (urlParams.has('role')) {
+            currentRole = urlParams.get('role');
+        } else if (roleSelect && roleSelect.value) {
+            currentRole = roleSelect.value;
+        }
+        
+        let tabToClick = document.getElementById('defaultTab');
+        const tabs = document.querySelectorAll('.contact-tab');
+        tabs.forEach(t => {
+            let tRole = t.textContent.toLowerCase();
+            if (tRole === 'tutor') tRole = 'teacher';
+            if (tRole === currentRole) {
+                tabToClick = t;
+            }
+        });
+        
+        if (tabToClick) {
+            tabToClick.click();
+        } else {
+            handleRoleChange();
+        }
+
+        // Main button click logic
+        if (mainBtn) {
+            mainBtn.addEventListener('click', function(e) {
+                if (mainBtn.type === 'button') {
+                    // Validate step 1 inputs before proceeding
+                    let isValid = true;
+                    const step1Inputs = step1.querySelectorAll('input, select, textarea');
+                    for (let input of step1Inputs) {
+                        if (!input.checkValidity()) {
+                            input.reportValidity();
+                            isValid = false;
+                            break;
+                        }
+                    }
+                    
+                    if (isValid) {
+                        step1.style.display = 'none';
+                        step2.style.display = 'block';
+                        if (loginLink) loginLink.style.display = 'none';
+                        // Re-initialize select2 if needed when making visible
+                        $('.category-select').select2({
+                            placeholder: "Search and select a subject...",
+                            allowClear: true,
+                            width: '100%'
+                        });
+                    }
+                }
+            });
+        }
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', function() {
+                step2.style.display = 'none';
+                step1.style.display = 'block';
+                if (loginLink) loginLink.style.display = 'block';
+            });
+        }
+
+        // Add Certificate Button Delegation
+        $(document).on('click', '.add-cert-btn', function() {
+            const block = $(this).closest('.certificates-block');
+            const wrapper = block.find('.certificate-inputs-wrapper');
+            const courseIndex = block.closest('.course-block').data('index');
+            
+            const newEntry = `
+                <div class="certificate-entry d-flex gap-2 mb-2">
+                    <input type="text" name="cert_title_${courseIndex}[]" class="form-control" placeholder="Document Name (e.g. Degree)">
+                    <input type="file" name="cert_file_${courseIndex}[]" class="form-control">
+                    <button type="button" class="btn btn-outline-danger px-3 remove-cert-btn" title="Remove Certificate">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            wrapper.append(newEntry);
+        });
+
+        // Remove Certificate Button
+        $(document).on('click', '.remove-cert-btn', function() {
+            $(this).closest('.certificate-entry').remove();
+        });
+
+        // Add Another Course
+        $('#add-course-btn').click(function() {
+            // Destroy select2 on the original element before cloning so the clone doesn't copy the generated UI elements
+            $('.category-select').select2('destroy');
+
+            const firstBlock = $('.course-block').first();
+            const clone = firstBlock.clone();
+            
+            // Update indices and names
+            const newIndex = courseCount++;
+            clone.attr('data-index', newIndex);
+            clone.find('.course-heading').text(`Course #${newIndex + 1}`);
+            
+            // Show remove button
+            clone.find('.remove-course-btn').show();
+            
+            // Clear inputs in the clone
+            clone.find('input, textarea').val('');
+            clone.find('select').prop('selectedIndex', 0);
+            
+            // Update certificate input names for the new index
+            clone.find('input[name^="cert_title"]').attr('name', `cert_title_${newIndex}[]`);
+            clone.find('input[name^="cert_file"]').attr('name', `cert_file_${newIndex}[]`);
+            
+            // Remove extra certificate rows if any were added to the first block
+            clone.find('.certificate-entry:not(:first)').remove();
+            
+            // Append clone
+            $('#courses-container').append(clone);
+            
+            // Re-initialize select2 on all selects
+            $('.category-select').select2({
+                placeholder: "Search and select a subject...",
+                allowClear: true,
+                width: '100%'
+            });
+            
+            // Update the intro video name in backend we expect intro_video[] but since it's a list, the file array gets flat.
+            // Actually, we process intro videos dynamically using intro_video_0, intro_video_1 in views.py
+            clone.find('input[type="file"][name^="intro_video"]').attr('name', `intro_video_${newIndex}`);
+        });
+        
+        // Let's make sure the first course's intro video has the correct name right away
+        $('.course-block').first().find('input[type="file"][name^="intro_video"]').attr('name', 'intro_video_0');
+
+        // Remove Course
+        $(document).on('click', '.remove-course-btn', function() {
+            $(this).closest('.course-block').remove();
+            
+            // Re-number headings (optional)
+            $('.course-block').each(function(idx) {
+                $(this).find('.course-heading').text(`Course #${idx + 1}`);
+            });
+        });
+        
+        // Auto-calculate Total Amount
+        $(document).on('input', '.hourly-fee-input, .duration-input', function() {
+            const courseBlock = $(this).closest('.course-block');
+            const hourlyFee = parseFloat(courseBlock.find('.hourly-fee-input').val()) || 0;
+            const duration = parseFloat(courseBlock.find('.duration-input').val()) || 0;
+            const total = hourlyFee * duration;
+            courseBlock.find('.total-amount-input').val(total.toFixed(2));
+        });
+        
+    
+    // File Removal Logic
+    function setupFileRemoval() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            if (!input.classList.contains('file-removal-initialized')) {
+                input.classList.add('file-removal-initialized');
+                
+                input.addEventListener('change', function() {
+                    // Remove existing clear button if any
+                    const existingBtn = this.parentNode.querySelector('.btn-clear-file');
+                    if (existingBtn) existingBtn.remove();
+                    
+                    if (this.files && this.files.length > 0) {
+                        const clearBtn = document.createElement('button');
+                        clearBtn.type = 'button';
+                        clearBtn.className = 'btn btn-sm btn-outline-danger btn-clear-file ms-2';
+                        clearBtn.innerHTML = '<i class="bi bi-x"></i> Remove';
+                        clearBtn.style.padding = '2px 8px';
+                        
+                        clearBtn.onclick = () => {
+                            this.value = '';
+                            clearBtn.remove();
+                        };
+                        
+                        // Insert after the input
+                        this.parentNode.insertBefore(clearBtn, this.nextSibling);
+                        
+                        // If it's a bootstrap group, we might need to handle styling slightly differently
+                        if (this.parentNode.classList.contains('certificate-entry')) {
+                            this.parentNode.appendChild(clearBtn);
+                        } else if (!this.parentNode.classList.contains('d-flex')) {
+                            this.parentNode.classList.add('d-flex', 'align-items-center');
+                        }
+                    }
+                });
+            }
+        });
+    }
+    
+    // Auto Calculate logic
+    function setupAutoCalculate() {
+        const courseBlocks = document.querySelectorAll('.course-block');
+        courseBlocks.forEach(block => {
+            if (!block.classList.contains('calc-initialized')) {
+                block.classList.add('calc-initialized');
+                
+                const hourlyInput = block.querySelector('input[name="hourly_fee[]"]');
+                const durationInput = block.querySelector('input[name="total_duration_hours[]"]');
+                const amountInput = block.querySelector('input[name="total_amount[]"]');
+                
+                if (hourlyInput && durationInput && amountInput) {
+                    amountInput.readOnly = true; // Lock it to auto-calculated value
+                    amountInput.style.backgroundColor = '#f8f9fa';
+                    
+                    const calculateAmount = () => {
+                        const hFee = parseFloat(hourlyInput.value) || 0;
+                        const duration = parseFloat(durationInput.value) || 0;
+                        amountInput.value = (hFee * duration).toFixed(2);
+                    };
+                    
+                    hourlyInput.addEventListener('input', calculateAmount);
+                    durationInput.addEventListener('input', calculateAmount);
+                }
+            }
+        });
+    }
+
+    setupFileRemoval();
+    setupAutoCalculate();
+    
+    // Override add course button to re-initialize
+    const originalAddCourse = document.getElementById('add-course-btn');
+    if (originalAddCourse) {
+        originalAddCourse.addEventListener('click', () => {
+            setTimeout(() => {
+                setupFileRemoval();
+                setupAutoCalculate();
+            }, 100);
+        });
+    }
+    
+    const originalAddCert = document.querySelectorAll('.add-cert-btn');
+    originalAddCert.forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                setupFileRemoval();
+            }, 100);
+        });
+    });
+
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Add password toggle to all password inputs
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    passwordInputs.forEach(input => {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+        
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'material-symbols-outlined';
+        toggleIcon.innerHTML = 'visibility_off';
+        toggleIcon.style.position = 'absolute';
+        toggleIcon.style.right = '15px';
+        toggleIcon.style.top = '50%';
+        toggleIcon.style.transform = 'translateY(-50%)';
+        toggleIcon.style.cursor = 'pointer';
+        toggleIcon.style.color = 'var(--text-muted)';
+        toggleIcon.style.zIndex = '10';
+        
+        // Adjust input padding to make room for the icon
+        input.style.paddingRight = '45px';
+        
+        toggleIcon.addEventListener('click', () => {
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleIcon.innerHTML = 'visibility';
+            } else {
+                input.type = 'password';
+                toggleIcon.innerHTML = 'visibility_off';
+            }
+        });
+        
+        wrapper.appendChild(toggleIcon);
+    });
+
+    // File Removal Logic
+    function setupFileRemoval() {
+        const fileInputs = document.querySelectorAll('input[type="file"]');
+        fileInputs.forEach(input => {
+            if (!input.classList.contains('file-removal-initialized')) {
+                input.classList.add('file-removal-initialized');
+                
+                input.addEventListener('change', function() {
+                    // Remove existing clear button if any
+                    const existingBtn = this.parentNode.querySelector('.btn-clear-file');
+                    if (existingBtn) existingBtn.remove();
+                    
+                    if (this.files && this.files.length > 0) {
+                        const clearBtn = document.createElement('button');
+                        clearBtn.type = 'button';
+                        clearBtn.className = 'btn btn-sm btn-outline-danger btn-clear-file ms-2';
+                        clearBtn.innerHTML = '<i class="bi bi-x"></i> Remove';
+                        clearBtn.style.padding = '2px 8px';
+                        
+                        clearBtn.onclick = () => {
+                            this.value = '';
+                            clearBtn.remove();
+                        };
+                        
+                        // Insert after the input
+                        this.parentNode.insertBefore(clearBtn, this.nextSibling);
+                        
+                        // If it's a bootstrap group, we might need to handle styling slightly differently
+                        if (this.parentNode.classList.contains('certificate-entry')) {
+                            this.parentNode.appendChild(clearBtn);
+                        } else if (!this.parentNode.classList.contains('d-flex')) {
+                            this.parentNode.classList.add('d-flex', 'align-items-center');
+                        }
+                    }
+                });
+            }
+        });
+    }
+    
+    // Auto Calculate logic
+    function setupAutoCalculate() {
+        const courseBlocks = document.querySelectorAll('.course-block');
+        courseBlocks.forEach(block => {
+            if (!block.classList.contains('calc-initialized')) {
+                block.classList.add('calc-initialized');
+                
+                const hourlyInput = block.querySelector('input[name="hourly_fee[]"]');
+                const durationInput = block.querySelector('input[name="total_duration_hours[]"]');
+                const amountInput = block.querySelector('input[name="total_amount[]"]');
+                
+                if (hourlyInput && durationInput && amountInput) {
+                    amountInput.readOnly = true; // Lock it to auto-calculated value
+                    amountInput.style.backgroundColor = '#f8f9fa';
+                    
+                    const calculateAmount = () => {
+                        const hFee = parseFloat(hourlyInput.value) || 0;
+                        const duration = parseFloat(durationInput.value) || 0;
+                        amountInput.value = (hFee * duration).toFixed(2);
+                    };
+                    
+                    hourlyInput.addEventListener('input', calculateAmount);
+                    durationInput.addEventListener('input', calculateAmount);
+                }
+            }
+        });
+    }
+
+    setupFileRemoval();
+    setupAutoCalculate();
+    
+    // Override add course button to re-initialize
+    const originalAddCourse = document.getElementById('add-course-btn');
+    if (originalAddCourse) {
+        originalAddCourse.addEventListener('click', () => {
+            setTimeout(() => {
+                setupFileRemoval();
+                setupAutoCalculate();
+            }, 100);
+        });
+    }
+    
+    const originalAddCert = document.querySelectorAll('.add-cert-btn');
+    originalAddCert.forEach(btn => {
+        btn.addEventListener('click', () => {
+            setTimeout(() => {
+                setupFileRemoval();
+            }, 100);
+        });
+    });
+
+});
+</script>
+{% endblock %}

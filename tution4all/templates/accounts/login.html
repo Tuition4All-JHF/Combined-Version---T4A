@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Login - Tuition4All{% endblock %}
+
+{% block content %}
+<section class="py-5" style="background: var(--bg-color); min-height: 80vh;">
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-8 text-center">
+                <span class="pill-badge mx-auto mb-3">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">login</span>
+                    Welcome Back
+                </span>
+                <h1 class="brand-font fw-bold mb-3" style="font-size: clamp(2rem, 4vw, 3rem); color: var(--text-primary); letter-spacing: -0.02em;">
+                    Sign in to your <span style="font-family: var(--font-serif); font-style: italic; font-weight: 400;" id="roleTitleColor">account</span>
+                </h1>
+                <p style="color: var(--text-secondary); max-width: 36rem; margin: 0 auto; font-size: 1.05rem;">
+                    Select your role to personalize your login experience.
+                </p>
+            </div>
+        </div>
+
+        <!-- Role Tabs & Form -->
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-7">
+                <!-- Role Selector -->
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4 p-2 rounded-4" style="background: var(--bg-surface-dim); border: 1px solid var(--border-color);">
+                    <button class="contact-tab active-student w-100 w-sm-auto flex-grow-1" onclick="setRole('student', this, 'active-student')" id="defaultTab">Student</button>
+                    <button class="contact-tab w-100 w-sm-auto flex-grow-1" onclick="setRole('parent', this, 'active-parent')">Parent</button>
+                    <button class="contact-tab w-100 w-sm-auto flex-grow-1" onclick="setRole('teacher', this, 'active-tutor')">Tutor</button>
+                </div>
+
+                <!-- Form Card -->
+                <div class="glow-card p-4 p-md-5">
+                    <form method="post">
+                        {% csrf_token %}
+                        <!-- We can optionally pass role to login if we want, but it's just visual here -->
+                        <input type="hidden" id="loginRole" name="login_role" value="student">
+                        
+                        {{ form|crispy }}
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-3 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2 mt-4" id="submitBtn">
+                            Login <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+                        </button>
+                    </form>
+                    
+                    <div class="mt-4 text-center text-muted" style="font-size: 0.95rem;">
+                        Don't have an account? <br/>
+                        <a href="{% url 'accounts:register' %}" class="fw-bold text-decoration-none mt-2 d-inline-block" id="registerLink" style="color: var(--primary-color);">Create an account</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    function setRole(role, btn, activeClass) {
+        document.getElementById('loginRole').value = role;
+        
+        // Remove active classes from all tabs
+        const tabs = document.querySelectorAll('.contact-tab');
+        tabs.forEach(t => {
+            t.classList.remove('active-student', 'active-parent', 'active-tutor');
+        });
+        
+        // Add specific active class to clicked tab
+        btn.classList.add(activeClass);
+        
+        // Update button and accent colors to match
+        const submitBtn = document.getElementById('submitBtn');
+        const titleColor = document.getElementById('roleTitleColor');
+        const registerLink = document.getElementById('registerLink');
+        
+        if (role === 'student') {
+            submitBtn.style.background = 'var(--gradient-accent)';
+            submitBtn.style.borderColor = 'var(--primary-color)';
+            titleColor.style.color = 'var(--primary-color)';
+            registerLink.style.color = 'var(--primary-color)';
+        } else if (role === 'parent') {
+            submitBtn.style.background = 'var(--color-success)';
+            submitBtn.style.borderColor = 'var(--color-success)';
+            titleColor.style.color = 'var(--color-success)';
+            registerLink.style.color = 'var(--color-success)';
+        } else if (role === 'teacher') {
+            submitBtn.style.background = 'var(--color-warning)';
+            submitBtn.style.borderColor = 'var(--color-warning)';
+            titleColor.style.color = 'var(--color-warning)';
+            registerLink.style.color = 'var(--color-warning)';
+        }
+        
+        // Automatically update the register link so it passes the role parameter
+        registerLink.href = "{% url 'accounts:register' %}?role=" + role;
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+    // Add password toggle to all password inputs
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    passwordInputs.forEach(input => {
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'relative';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+        
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'material-symbols-outlined';
+        toggleIcon.innerHTML = 'visibility_off';
+        toggleIcon.style.position = 'absolute';
+        toggleIcon.style.right = '15px';
+        toggleIcon.style.top = '50%';
+        toggleIcon.style.transform = 'translateY(-50%)';
+        toggleIcon.style.cursor = 'pointer';
+        toggleIcon.style.color = 'var(--text-muted)';
+        toggleIcon.style.zIndex = '10';
+        
+        // Adjust input padding to make room for the icon
+        input.style.paddingRight = '45px';
+        
+        toggleIcon.addEventListener('click', () => {
+            if (input.type === 'password') {
+                input.type = 'text';
+                toggleIcon.innerHTML = 'visibility';
+            } else {
+                input.type = 'password';
+                toggleIcon.innerHTML = 'visibility_off';
+            }
+        });
+        
+        wrapper.appendChild(toggleIcon);
+    });
+
+        // Parse URL params to see if we came from a specific role
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRole = urlParams.get('role');
+        
+        let tabToClick = document.getElementById('defaultTab');
+        
+        if (urlRole) {
+            const tabs = document.querySelectorAll('.contact-tab');
+            tabs.forEach(t => {
+                if (t.textContent.toLowerCase() === urlRole.toLowerCase() || 
+                   (urlRole === 'teacher' && t.textContent === 'Tutor')) {
+                    tabToClick = t;
+                }
+            });
+        }
+        
+        if (tabToClick) {
+            tabToClick.click();
+        }
+    });
+</script>
+{% endblock %}

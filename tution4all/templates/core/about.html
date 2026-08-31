@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}About Us - Tuition4All{% endblock %}
+{% block content %}
+<section class="py-5" style="background: var(--bg-color);">
+    <div class="container py-4">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <span class="pill-badge mb-3">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">flag</span>
+                    Our Mission
+                </span>
+                <h1 class="brand-font fw-bold mb-4" style="font-size: clamp(2rem, 4vw, 3rem); color: var(--text-primary); letter-spacing: -0.02em; line-height: 1.1;">
+                    Education built on <span style="font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--primary-color);">verified trust.</span>
+                </h1>
+                <p class="lead" style="color: var(--text-secondary); line-height: 1.7; font-size: 1.1rem;">
+                    Tuition4All was founded to fix a broken system. Parents were paying for promises, students weren't seeing progress, and great tutors were losing out to people with better marketing.
+                </p>
+                <p style="color: var(--text-muted); line-height: 1.7;">
+                    Our platform provides a seamless, transparent experience. Whether it's our 4D Rating System that audits actual lesson quality, our Parental Portal that provides live audio logs, or our strict tutor verification process — everything we build is designed to guarantee academic excellence.
+                </p>
+                <a href="{% url 'courses:list' %}" class="btn btn-primary btn-lg rounded-pill mt-4 px-5 fw-bold shadow" style="background: var(--gradient-accent); border: none;">Explore Courses</a>
+            </div>
+            <div class="col-lg-6 position-relative">
+                <div class="bg-glow-left" style="top: 50%; left: 50%; transform: translate(-50%, -50%); width: 400px; height: 400px; z-index: 0;"></div>
+                <div class="rounded-4 overflow-hidden position-relative z-1" style="border: 1px solid rgba(103,92,245,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.08); aspect-ratio: 4/4;">
+                    <img src="{% static 'images/student_backpack.jpg' %}" alt="Student" class="w-100 h-100" style="object-fit: cover;">
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Values Section -->
+<section class="py-5 border-top border-bottom" style="background: var(--bg-card);">
+    <div class="container py-4">
+        <div class="text-center mb-5">
+            <h2 class="brand-font fw-bold" style="color: var(--text-primary);">Our Core Principles</h2>
+        </div>
+        <div class="row g-4 text-center">
+            <div class="col-md-4">
+                <div class="p-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 64px; height: 64px; background: rgba(103,92,245,0.1); color: var(--primary-color);">
+                        <span class="material-symbols-outlined" style="font-size: 32px;">verified_user</span>
+                    </div>
+                    <h5 class="fw-bold mb-3 brand-font" style="color: var(--text-primary);">Absolute Transparency</h5>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">No hidden fees, no fake reviews. Every metric on our platform is verified and audited.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 64px; height: 64px; background: rgba(46,125,50,0.1); color: var(--color-success);">
+                        <span class="material-symbols-outlined" style="font-size: 32px;">trending_up</span>
+                    </div>
+                    <h5 class="fw-bold mb-3 brand-font" style="color: var(--text-primary);">Measured Progress</h5>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">Learning isn't just about showing up. It's about visible, measurable improvement over time.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-4">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3" style="width: 64px; height: 64px; background: rgba(217,119,6,0.1); color: var(--color-warning);">
+                        <span class="material-symbols-outlined" style="font-size: 32px;">workspace_premium</span>
+                    </div>
+                    <h5 class="fw-bold mb-3 brand-font" style="color: var(--text-primary);">Elite Mentorship</h5>
+                    <p style="color: var(--text-muted); font-size: 0.95rem;">We empower the best educators by giving them the tools and the pay they deserve.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

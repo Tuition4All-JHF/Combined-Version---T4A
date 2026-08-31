@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Profile: {{ teacher.user.get_full_name|default:teacher.user.username }} - Tution4All{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-4 mb-4">
+        <!-- Teacher Info Card -->
+        <div class="card shadow-sm border-0 rounded-4 text-center p-4 sticky-top" style="top: 20px;">
+            {% if teacher.photo %}
+                <img src="{{ teacher.photo.url }}" class="rounded-circle mx-auto mb-3 shadow-sm border" width="150" height="150" style="object-fit: cover;">
+            {% else %}
+                <div class="bg-primary rounded-circle d-inline-flex mx-auto align-items-center justify-content-center mb-3 text-white shadow-sm" style="width: 150px; height: 150px; font-size: 4rem; font-family: 'Outfit', sans-serif;">
+                    {{ teacher.user.username|make_list|first|upper }}
+                </div>
+            {% endif %}
+            
+            <h3 class="fw-bold text-primary brand-font">{{ teacher.user.get_full_name|default:teacher.user.username }}</h3>
+            <p class="text-muted mb-2"><i class="bi bi-person-badge text-primary"></i> Educator at Tution4All</p>
+            
+            <div class="d-flex justify-content-center mb-3 text-warning fs-4">
+                {% for i in "12345" %}
+                    {% if forloop.counter <= avg_rating %}
+                        <i class="bi bi-star-fill"></i>
+                    {% elif forloop.counter|add:"-0.5" <= avg_rating %}
+                        <i class="bi bi-star-half"></i>
+                    {% else %}
+                        <i class="bi bi-star"></i>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <p class="text-muted small mb-4">{{ avg_rating }} out of 5 ({{ reviews.count }} reviews)</p>
+            
+            <hr class="text-muted opacity-25">
+            
+            <div class="text-start mt-4">
+                <h6 class="fw-bold text-secondary text-uppercase small mb-2">Subjects Taught</h6>
+                <p class="mb-3">{{ teacher.subjects|default:"General Subjects" }}</p>
+                
+                <h6 class="fw-bold text-secondary text-uppercase small mb-2">Qualifications</h6>
+                <p class="mb-3">{{ teacher.qualification|default:"Not specified" }}</p>
+                
+                <h6 class="fw-bold text-secondary text-uppercase small mb-2">Experience</h6>
+                <p class="mb-4">{{ teacher.experience|default:"Not specified" }}</p>
+
+                <h6 class="fw-bold text-secondary text-uppercase small mb-2"><i class="bi bi-patch-check text-success"></i> Verified Documents</h6>
+                <ul class="list-unstyled mb-0">
+                    {% for cert in teacher.certificates.all %}
+                        {% if cert.is_approved %}
+                        <li class="mb-2">
+                            <a href="{{ cert.file.url }}" target="_blank" class="text-decoration-none text-primary d-flex align-items-center">
+                                <i class="bi bi-file-earmark-pdf-fill me-2 fs-5"></i>
+                                <span>{{ cert.title }}</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% empty %}
+                        <p class="text-muted small">No verified documents available.</p>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Profile Video Section -->
+        {% if teacher.profile_video and teacher.profile_video_approved %}
+        <div class="card shadow-sm border-0 rounded-4 mb-5 overflow-hidden">
+            <video class="w-100" style="max-height: 400px; object-fit: cover;" controls>
+                <source src="{{ teacher.profile_video.url }}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+        {% endif %}
+
+        <!-- About Section -->
+        <h3 class="fw-bold text-primary mb-3 brand-font">About {{ teacher.user.get_full_name|default:teacher.user.username }}</h3>
+        <div class="card shadow-sm border-0 rounded-4 mb-5">
+            <div class="card-body p-4">
+                <p class="mb-0" style="line-height: 1.8;">{{ teacher.bio|default:"This teacher has not written a bio yet."|linebreaksbr }}</p>
+            </div>
+        </div>
+
+        <!-- Active Courses Section -->
+        <h3 class="fw-bold text-primary mb-3 brand-font">Courses by this Teacher</h3>
+        <div class="row mb-5">
+            {% for course in teacher.courses.all %}
+                {% if course.is_approved and not course.is_frozen %}
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm border-0 rounded-4 h-100 hover-lift transition-all">
+                        <div class="card-body p-4 d-flex flex-column">
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill mb-3 align-self-start">{{ course.category.name }}</span>
+                            <h5 class="card-title fw-bold">{{ course.category.name }}</h5>
+                            <p class="text-muted small flex-grow-1">{{ course.description|truncatewords:15 }}</p>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <span class="fs-5 fw-bolder text-success">₹{{ course.price }}</span>
+                                <a href="{% url 'courses:detail' course.id %}" class="btn btn-outline-primary rounded-pill btn-sm px-3">View Course</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-light border rounded-4 text-center p-4">
+                        <i class="bi bi-journal-x fs-1 text-muted d-block mb-2"></i>
+                        This teacher has no active courses at the moment.
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Reviews & Ratings Section -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="fw-bold text-primary m-0">Student Reviews</h3>
+            {% if can_review %}
+                <button type="button" class="btn btn-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#reviewModal">
+                    <i class="bi bi-pencil-square me-1"></i> Write a Review
+                </button>
+            {% endif %}
+        </div>
+        
+        <div class="card shadow-sm border-0 rounded-4 mb-5">
+            <div class="list-group list-group-flush rounded-4">
+                {% for review in reviews %}
+                <div class="list-group-item p-4">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="d-flex align-items-center">
+                            {% if review.student.photo %}
+                                <img src="{{ review.student.photo.url }}" class="rounded-circle me-3" width="40" height="40" style="object-fit: cover;">
+                            {% else %}
+                                <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-3 text-white" style="width: 40px; height: 40px;">
+                                    {{ review.student.user.username|make_list|first|upper }}
+                                </div>
+                            {% endif %}
+                            <div>
+                                <h6 class="fw-bold mb-0">{{ review.student.user.get_full_name|default:review.student.user.username }}</h6>
+                                <small class="text-muted">{{ review.created_at|date:"M d, Y" }}</small>
+                            </div>
+                        </div>
+                        <div class="text-warning">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= review.rating %}
+                                    <i class="bi bi-star-fill"></i>
+                                {% else %}
+                                    <i class="bi bi-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <p class="mb-0 mt-2 text-dark">{{ review.feedback|linebreaksbr }}</p>
+                </div>
+                {% empty %}
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-chat-left-dots fs-1 d-block mb-3 opacity-50"></i>
+                    <h5 class="fw-bold">No reviews yet</h5>
+                    <p class="mb-0">Be the first to review this teacher after taking their course!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Write Review Modal -->
+{% if can_review %}
+<div class="modal fade" id="reviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary">Review {{ teacher.user.get_full_name|default:teacher.user.username }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'core:public_teacher_profile' teacher.id %}">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-4 text-center">
+                        <label class="form-label fw-bold d-block mb-2">Overall Rating</label>
+                        <div class="rating-select d-inline-flex flex-row-reverse justify-content-center fs-2 text-warning" style="cursor: pointer;">
+                            <input type="radio" name="rating" value="5" id="star5" class="d-none" required>
+                            <label for="star5" class="bi bi-star px-1"></label>
+                            
+                            <input type="radio" name="rating" value="4" id="star4" class="d-none">
+                            <label for="star4" class="bi bi-star px-1"></label>
+                            
+                            <input type="radio" name="rating" value="3" id="star3" class="d-none">
+                            <label for="star3" class="bi bi-star px-1"></label>
+                            
+                            <input type="radio" name="rating" value="2" id="star2" class="d-none">
+                            <label for="star2" class="bi bi-star px-1"></label>
+                            
+                            <input type="radio" name="rating" value="1" id="star1" class="d-none">
+                            <label for="star1" class="bi bi-star px-1"></label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="feedback" class="form-label fw-bold">Your Feedback</label>
+                        <textarea class="form-control rounded-3" id="feedback" name="feedback" rows="4" placeholder="Share your experience learning with this teacher..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Submit Review</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* CSS for the star rating selector */
+.rating-select label {
+    transition: all 0.2s;
+}
+.rating-select label:hover,
+.rating-select label:hover ~ label,
+.rating-select input:checked ~ label {
+    color: #ffc107 !important;
+}
+.rating-select label:before {
+    content: "\F586"; /* bi-star empty */
+}
+.rating-select label:hover:before,
+.rating-select label:hover ~ label:before,
+.rating-select input:checked ~ label:before {
+    content: "\F588"; /* bi-star-fill */
+}
+</style>
+{% endif %}
+
+{% endblock %}

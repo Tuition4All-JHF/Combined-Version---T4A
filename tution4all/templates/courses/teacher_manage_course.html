@@ -1,0 +1,1009 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Course: {{ course.category.name }} - Tution4All{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+
+<script>
+    function toggleSpecificStudents(type, show) {
+        const container = document.getElementById(`specificStudentsContainer_${type}`);
+        const select = $(`select[name="assigned_students_${type}"]`);
+        
+        if (show) {
+            container.classList.remove('d-none');
+            
+            // Map the type to the corresponding modal ID
+            let modalId = '';
+            if(type === 'recorded_class') modalId = 'addRecordedClassModal';
+            else if(type === 'assignment') modalId = 'addAssignmentModal';
+            else if(type === 'project') modalId = 'addProjectModal';
+            else if(type === 'note') modalId = 'addNoteModal';
+            
+            // Initialize Select2 if not already initialized
+            if (!select.hasClass("select2-hidden-accessible")) {
+                select.select2({
+                    theme: "bootstrap-5",
+                    width: '100%',
+                    placeholder: "Search and select students...",
+                    dropdownParent: $(`#${modalId}`)
+                });
+            }
+        } else {
+            container.classList.add('d-none');
+            if (select.hasClass("select2-hidden-accessible")) {
+                select.val(null).trigger('change');
+            }
+        }
+    }
+
+    function updateCountdowns() {
+        const containers = document.querySelectorAll('.join-container');
+        const now = new Date();
+        
+        containers.forEach(container => {
+            const startTimeStr = container.getAttribute('data-start-time');
+            const endTimeStr = container.getAttribute('data-end-time');
+            if(!startTimeStr) return;
+            
+            const startTime = new Date(startTimeStr);
+            const diffMs = startTime - now;
+            
+            const btn = container.querySelector('.join-btn');
+            const textSpan = container.querySelector('.countdown-text');
+            
+            if (endTimeStr && now > new Date(endTimeStr)) {
+                if (btn && !btn.hasAttribute('data-ended')) {
+                    container.innerHTML = `<button class="btn btn-secondary rounded-pill px-3 fw-bold disabled"><i class="bi bi-x-circle"></i> Class Ended</button>`;
+                    const newBtn = container.querySelector('button');
+                    if (newBtn) newBtn.setAttribute('data-ended', 'true');
+                }
+            } else if (diffMs <= 120000) { // 2 minutes or passed
+                if(btn && btn.classList.contains('disabled') && !btn.hasAttribute('data-ended')) {
+                    const joinUrl = container.getAttribute('data-join-url');
+                    container.innerHTML = `<a href="${joinUrl}" class="btn btn-success rounded-pill px-3 fw-bold"><i class="bi bi-play-fill"></i> Start/Join Session</a>`;
+                }
+            } else {
+                if(textSpan) {
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const diffSecs = Math.floor((diffMs % (1000 * 60)) / 1000);
+                    
+                    let timeStr = "";
+                    if (diffDays > 0) timeStr += diffDays + "d ";
+                    if (diffHours > 0) timeStr += diffHours + "h ";
+                    timeStr += diffMins + "m " + diffSecs + "s";
+                    
+                    textSpan.textContent = "In: " + timeStr;
+                }
+            }
+        });
+    }
+    setInterval(updateCountdowns, 1000);
+    updateCountdowns();
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeSelect = document.getElementById('scheduleType');
+        const daysContainer = document.getElementById('daysOfWeekContainer');
+        const summaryText = document.getElementById('scheduleSummary');
+        const form = document.getElementById('scheduleForm');
+        
+        
+        // Time slot dynamic rows
+        const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+        const addTimeBtn = document.getElementById('addTimeBtn');
+        
+        function updateRemoveButtons() {
+            const rows = timeSlotsContainer.querySelectorAll('.time-slot-row');
+            rows.forEach((row, index) => {
+                const btn = row.querySelector('.remove-time-btn');
+                if(rows.length === 1) {
+                    btn.disabled = true;
+                } else {
+                    btn.disabled = false;
+                }
+            });
+        }
+        
+        addTimeBtn.addEventListener('click', function() {
+            const firstRow = timeSlotsContainer.querySelector('.time-slot-row');
+            const newRow = firstRow.cloneNode(true);
+            newRow.querySelector('.start-time-input').value = '';
+            newRow.querySelector('.end-time-input').value = '';
+            
+            newRow.querySelector('.remove-time-btn').addEventListener('click', function() {
+                newRow.remove();
+                updateRemoveButtons();
+                updateSummary();
+            });
+            
+            newRow.querySelectorAll('input[type="time"]').forEach(el => {
+                el.addEventListener('change', updateSummary);
+            });
+            
+            timeSlotsContainer.appendChild(newRow);
+            updateRemoveButtons();
+            updateSummary();
+        });
+        
+        // Setup initial remove button
+        timeSlotsContainer.querySelector('.remove-time-btn').addEventListener('click', function() {
+            this.closest('.time-slot-row').remove();
+            updateRemoveButtons();
+            updateSummary();
+        });
+        
+        // Setup initial time inputs change event
+        timeSlotsContainer.querySelectorAll('input[type="time"]').forEach(el => {
+            el.addEventListener('change', updateSummary);
+        });
+
+        function updateSummary() {
+            const mode = document.getElementById('sessionMode').value;
+            const type = typeSelect.value;
+            let timesText = [];
+            timeSlotsContainer.querySelectorAll('.time-slot-row').forEach(row => {
+                const st = row.querySelector('.start-time-input').value;
+                const et = row.querySelector('.end-time-input').value;
+                if(st && et) {
+                    timesText.push(`${st} to ${et}`);
+                }
+            });
+            
+            let days = [];
+            if(type !== 'demo') {
+                document.querySelectorAll('.day-chk:checked').forEach(chk => {
+                    days.push(chk.nextElementSibling.innerText);
+                });
+            } else {
+                const dayVal = document.getElementById('demoDay').value;
+                if(dayVal) days.push(dayVal);
+            }
+            
+            if(timesText.length === 0) {
+                summaryText.innerHTML = "<em>Please select time to see summary</em>";
+                return;
+            }
+            
+            let summary = `<strong>${mode === 'private' ? '1-to-1' : 'Group'}</strong> session`;
+            if (type === 'demo') {
+                summary += ` on <strong>${days.join(', ')}</strong>`;
+            } else {
+                summary += ` on <strong>${days.length > 0 ? days.join(', ') : 'No days selected'}</strong>`;
+            }
+            summary += ` from <strong>${timesText.join(' & ')}</strong>`;
+            
+
+            if (type === 'full') {
+                summary += ` <span class='badge bg-primary ms-2'>Weekly</span>`;
+            } else if (type === 'monthly') {
+                const sDate = document.getElementById('monthlyStartDate').value;
+                const eDate = document.getElementById('monthlyEndDate').value;
+                summary += ` <span class='badge bg-info ms-2'>Monthly</span>`;
+                if(sDate && eDate) summary += ` <span class='badge bg-secondary ms-1'>${sDate} to ${eDate}</span>`;
+            } else {
+
+                summary += ` <span class='badge bg-warning text-dark ms-2'>1 Class</span>`;
+            }
+            summaryText.innerHTML = summary;
+        }
+
+        typeSelect.addEventListener('change', function() {
+            if(this.value === 'demo') {
+                document.getElementById('demoDayContainer').style.display = 'block';
+                document.getElementById('daysContainerGroup').style.display = 'none';
+                document.getElementById('monthlyStartDateContainer').style.display = 'none';
+                document.getElementById('monthlyEndDateContainer').style.display = 'none';
+            } else if(this.value === 'monthly') {
+                document.getElementById('demoDayContainer').style.display = 'none';
+                document.getElementById('daysContainerGroup').style.display = 'block';
+                document.getElementById('monthlyStartDateContainer').style.display = 'block';
+                document.getElementById('monthlyEndDateContainer').style.display = 'block';
+            } else {
+                document.getElementById('demoDayContainer').style.display = 'none';
+                document.getElementById('daysContainerGroup').style.display = 'block';
+                document.getElementById('monthlyStartDateContainer').style.display = 'none';
+                document.getElementById('monthlyEndDateContainer').style.display = 'none';
+            }
+            updateSummary();
+        });
+        
+        document.getElementById('monthlyStartDate').addEventListener('change', updateSummary);
+        document.getElementById('monthlyEndDate').addEventListener('change', updateSummary);
+
+
+        document.getElementById('sessionMode').addEventListener('change', function() {
+            if(this.value === 'public') {
+                document.getElementById('maxCapacityContainer').style.display = 'block';
+            } else {
+                document.getElementById('maxCapacityContainer').style.display = 'none';
+            }
+            updateSummary();
+        });
+
+        document.querySelectorAll('.day-chk, #demoDay').forEach(el => {
+            el.addEventListener('change', updateSummary);
+        });
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('saveSlotBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+            
+            const mode = document.getElementById('sessionMode').value;
+            const type = typeSelect.value;
+            const capacity = document.getElementById('maxCapacity').value;
+            
+            let timeSlots = [];
+            document.querySelectorAll('.time-slot-row').forEach(row => {
+                const st = row.querySelector('.start-time-input').value;
+                const et = row.querySelector('.end-time-input').value;
+                if(st && et) {
+                    timeSlots.push({'start': st, 'end': et});
+                }
+            });
+            if(timeSlots.length === 0) {
+                alert("Please add at least one complete time slot.");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Add Time Slot';
+                return;
+            }
+            
+            let daysOfWeek = [];
+            let demoDate = null;
+            
+            if (type === 'demo') {
+                const val = document.getElementById('demoDate').value;
+                if(!val) {
+                    alert("Please select a date for the demo class.");
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Add Time Slot';
+                    return;
+                }
+                demoDate = val;
+                daysOfWeek = [0];
+            } else {
+                document.querySelectorAll('.day-chk:checked').forEach(function(chk) {
+                    daysOfWeek.push(parseInt(chk.value));
+                });
+            }
+            
+            if(daysOfWeek.length === 0) {
+                alert("Please select at least one day.");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Add Time Slot';
+                return;
+            }
+            
+            fetch("{% url 'courses:api_manage_slot' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    'class_type': mode,
+                    'schedule_type': type,
+                    'times': timeSlots,
+                    'start_date': document.getElementById('monthlyStartDate') ? document.getElementById('monthlyStartDate').value : null,
+                    'end_date': document.getElementById('monthlyEndDate') ? document.getElementById('monthlyEndDate').value : null,
+                    'demo_date': demoDate,
+                    'course_id': '{{ course.id }}',
+                    'max_capacity': capacity,
+                    'days_of_week': daysOfWeek
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Something went wrong.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-plus-lg"></i> Add Time Slot';
+                }
+            });
+        });
+
+        
+    function deleteSet(groupId, slotId) {
+        if(confirm("Do you want to delete this session/set?")) {
+            fetch("{% url 'courses:api_manage_slot' %}", {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    'recurring_group_id': groupId,
+                    'id': slotId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.status === 'success') {
+                    location.reload();
+                } else {
+                    alert(data.error);
+                }
+            });
+        }
+    }
+
+        function getCsrfToken() {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, 10) === 'csrftoken=') {
+                        cookieValue = decodeURIComponent(cookie.substring(10));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+</script>
+
+{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
+        <h2 class="fw-bold text-primary m-0"><i class="bi bi-gear-fill me-2"></i> Manage Course: {{ course.category.name }}</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <div class="list-group shadow-sm border-0 rounded-4" id="manage-tabs" role="tablist">
+            <a class="list-group-item list-group-item-action active fw-bold border-0 py-3" data-bs-toggle="list" href="#live_classes" role="tab"><i class="bi bi-camera-video-fill me-2 text-danger"></i> Live Classes</a>
+            <!-- Recorded Classes tab removed -->
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" data-bs-toggle="list" href="#assignments" role="tab"><i class="bi bi-journal-text me-2 text-primary"></i> Assignments</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" data-bs-toggle="list" href="#projects" role="tab"><i class="bi bi-kanban me-2 text-success"></i> Projects</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" data-bs-toggle="list" href="#notes" role="tab"><i class="bi bi-file-earmark-pdf-fill me-2 text-warning"></i> Study Notes</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" data-bs-toggle="list" href="#attendance" role="tab"><i class="bi bi-person-check-fill me-2 text-secondary"></i> Attendance</a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="tab-content">
+            
+            <!-- LIVE CLASSES TAB -->
+            <div class="tab-pane fade show active" id="live_classes" role="tabpanel">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold m-0"><i class="bi bi-camera-video-fill text-danger me-2"></i> Live Classes</h4>
+                        
+                    </div>
+                    
+                    
+                    <!-- NEW INLINE SCHEDULE UI -->
+                    <div class="card shadow-sm border border-primary rounded-4 p-4 mb-4 bg-light">
+                        <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-calendar-plus me-2"></i>Add New Time Slot</h5>
+                        <form id="scheduleForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Session Mode</label>
+                                    <select class="form-select rounded-pill" id="sessionMode">
+                                        <option value="private">1-to-1 (Private)</option>
+                                        <option value="public">1-to-Many (Public)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6" id="maxCapacityContainer" style="display:none;">
+                                    <label class="form-label fw-bold">Max Students per Session</label>
+                                    <input type="number" class="form-control rounded-pill" id="maxCapacity" value="10" min="2">
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold">Schedule Type</label>
+                                    <select class="form-select rounded-pill" id="scheduleType">
+                                        <option value="full">Weekly</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="demo">Demo (1 Class)</option>
+                                    </select>
+                                </div>
+                                
+                                
+                                <div class="col-md-6" id="monthlyStartDateContainer" style="display:none;">
+                                    <label class="form-label fw-bold">Start Date</label>
+                                    <input type="date" class="form-control rounded-pill" id="monthlyStartDate">
+                                </div>
+                                <div class="col-md-6" id="monthlyEndDateContainer" style="display:none;">
+                                    <label class="form-label fw-bold">End Date</label>
+                                    <input type="date" class="form-control rounded-pill" id="monthlyEndDate">
+                                </div>
+
+                                <div class="col-md-12" id="daysContainerGroup">
+                                    <label class="form-label fw-bold">Days of Week</label>
+                                    <div class="d-flex flex-wrap gap-2" id="daysOfWeekContainer">
+                                        <input type="checkbox" class="btn-check day-chk" id="day1" value="0" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day1">Mon</label>
+                                        <input type="checkbox" class="btn-check day-chk" id="day2" value="1" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day2">Tue</label>
+                                        <input type="checkbox" class="btn-check day-chk" id="day3" value="2" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day3">Wed</label>
+                                        <input type="checkbox" class="btn-check day-chk" id="day4" value="3" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day4">Thu</label>
+                                        <input type="checkbox" class="btn-check day-chk" id="day5" value="4" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day5">Fri</label>
+                                        <input type="checkbox" class="btn-check day-chk" id="day6" value="5" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day6">Sat</label>
+                                        <input type="checkbox" class="btn-check day-chk" id="day7" value="6" autocomplete="off"><label class="btn btn-outline-primary rounded-pill px-3 py-1" for="day7">Sun</label>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6" id="demoDayContainer" style="display:none;">
+                                    <label class="form-label fw-bold">Select Date</label>
+                                    <input type="date" class="form-control rounded-pill" id="demoDate">
+                                </div>
+                                
+                                <div class="col-12 mt-3">
+                                    <label class="form-label fw-bold">Time Slots</label>
+                                    <div id="timeSlotsContainer">
+                                        <div class="row g-2 mb-2 time-slot-row">
+                                            <div class="col-md-4">
+                                                <input type="time" class="form-control rounded-pill start-time-input" required>
+                                                <div class="form-text small">Start Time</div>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <input type="time" class="form-control rounded-pill end-time-input" required>
+                                                <div class="form-text small">End Time</div>
+                                            </div>
+                                            <div class="col-md-2 d-flex align-items-start pt-1">
+                                                <button type="button" class="btn btn-outline-danger rounded-circle remove-time-btn" disabled><i class="bi bi-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill mt-2" id="addTimeBtn">
+                                        <i class="bi bi-plus-lg"></i> Add Time
+                                    </button>
+                                </div>
+                                
+                                <div class="col-12 mt-4">
+                                    <div class="alert alert-secondary py-2 mb-3" id="scheduleSummary">
+                                        <em>Please select days and time to see summary</em>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold" id="saveSlotBtn">
+                                        <i class="bi bi-plus-lg"></i> Add Time Slot
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    {% if package_progress %}
+                    <h5 class="fw-bold mb-3 text-info"><i class="bi bi-layers-half me-2"></i>Package Subscriptions</h5>
+                    <div class="row mb-4">
+                        {% for pkg in package_progress %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-0 shadow-sm rounded-4 h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="me-2">
+                                            <h6 class="fw-bold m-0 text-truncate" title="{{ pkg.title }}">{{ pkg.title }}</h6>
+                                            <div class="text-muted small mt-1">
+                                                {% if pkg.student_name %}
+                                                    <i class="bi bi-person-fill text-success"></i> Booked by: <strong>{{ pkg.student_name }}</strong>
+                                                {% else %}
+                                                    <i class="bi bi-person text-secondary"></i> <em>Not booked yet</em>
+                                                {% endif %}
+                                                <br>
+                                                <i class="bi bi-calendar2-event text-secondary"></i> Starts: {{ pkg.start_time|date:"M d, Y" }}
+                                            </div>
+                                        </div>
+                                        <div class="text-end">
+                                            {% if pkg.student_name %}
+                                                {% if pkg.progress_percentage == 100 %}
+                                                    <span class="badge bg-success rounded-pill mb-1">Completed</span>
+                                                {% else %}
+                                                    <span class="badge bg-light text-dark rounded-pill border mb-1">{{ pkg.completed }}/{{ pkg.total }} Done</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill border mb-1">Available</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if pkg.student_name %}
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar {% if pkg.progress_percentage == 100 %}bg-success{% else %}bg-info{% endif %}" role="progressbar" style="width: {{ pkg.progress_percentage }}%;" aria-valuenow="{{ pkg.progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        {% if pkg.progress_percentage == 100 %}
+                                        <div class="mt-3 text-end">
+                                            <button class="btn btn-sm btn-outline-success rounded-pill px-3" onclick="document.getElementById('scheduleType').value='full'; document.getElementById('sessionMode').value='private'; window.scrollTo(0, document.getElementById('scheduleForm').offsetTop);"><i class="bi bi-calendar-plus me-1"></i>Schedule Next Set</button>
+                                        </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-secondary bg-opacity-25" role="progressbar" style="width: 100%;"></div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-calendar-check me-2"></i>Upcoming Classes</h5>
+                    <div class="list-group list-group-flush mb-4">
+                        {% for lc in upcoming_classes %}
+                            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">
+                                        {% if lc.class_type == 'public' %}
+                                            <span class="badge bg-info me-1">👥 Group</span>
+                                        {% else %}
+                                            <span class="badge bg-success me-1">👤 1-on-1</span>
+                                        {% endif %}
+                                        {% if lc.is_free %}
+                                            <span class="badge bg-warning text-dark me-1">🎁 Free Demo</span>
+                                        {% endif %}
+                                        {{ lc.title }}
+                                    </h6>
+                                    <p class="text-muted small mb-0">
+                                        <i class="bi bi-calendar"></i> {{ lc.start_time|date:"M d, Y" }} | 
+                                        <i class="bi bi-clock"></i> {{ lc.start_time|time:"h:i A" }} - {{ lc.end_time|time:"h:i A" }}
+                                    </p>
+                                    {% if lc.class_type == 'public' and lc.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark mt-1"><i class="bi bi-hourglass-split me-1"></i>Pending Admin Approval</span>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <div class="join-container" data-start-time="{{ lc.start_time|date:'c' }}" data-end-time="{{ lc.end_time|date:'c' }}" data-join-url="{% url 'courses:join_live_class' lc.id %}">
+                                        <button class="btn btn-sm btn-primary rounded-pill px-4 disabled join-btn" style="min-width: 140px;">
+                                            <i class="bi bi-clock-history"></i> <span class="countdown-text">...</span>
+                                        </button>
+                                    </div>
+                                    {% if lc.recurring_group_id %}
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill" onclick="deleteSet('{{ lc.recurring_group_id }}', '{{ lc.id }}')" {% if lc.has_bookings %}disabled title="Cannot delete: Students have already booked this package"{% endif %}><i class="bi bi-trash"></i> Delete Set</button>
+                                    {% else %}
+                                        <form action="{% url 'courses:teacher_delete_live_class' lc.id %}" method="post" class="d-inline" onsubmit="return confirm('Delete this class?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" {% if lc.has_bookings %}disabled title="Cannot delete: Students have already booked this class"{% endif %}><i class="bi bi-trash"></i></button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted text-center py-3">No upcoming classes scheduled.</p>
+                        {% endfor %}
+                    </div>
+                    
+                    <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-check-circle-fill me-2"></i>Completed Classes</h5>
+                    <div class="list-group list-group-flush mb-4">
+                        {% for lc in course.live_classes.all|dictsortreversed:"start_time" %}
+                            {% if lc.has_ended %}
+                            <div class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center bg-light rounded">
+                                <div>
+                                    <h6 class="fw-bold mb-1 text-muted">{{ lc.title }}</h6>
+                                    <p class="text-muted small mb-0"><i class="bi bi-calendar-check"></i> {{ lc.start_time|date:"M d, Y" }} | {{ lc.start_time|time:"h:i A" }}</p>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if lc.transcript %}
+                                    <a href="{% url 'courses:view_class_transcript' lc.id %}" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-card-text"></i> Summary</a>
+                                    {% endif %}
+                                    <span class="badge bg-secondary rounded-pill">Completed</span>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recorded Classes tab removed -->
+
+            <!-- ASSIGNMENTS TAB -->
+            <div class="tab-pane fade" id="assignments" role="tabpanel">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold m-0"><i class="bi bi-journal-text text-primary me-2"></i> Assignments</h4>
+                        <button type="button" class="btn btn-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#addAssignmentModal"><i class="bi bi-plus-lg"></i> Add Assignment</button>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for assignment in course.assignments.all %}
+                        <div class="list-group-item px-0 py-3">
+                            <h6 class="fw-bold mb-1">{{ assignment.title }}</h6>
+                            <p class="text-muted small mb-2">Due: <span class="text-danger">{{ assignment.due_date|date:"M d, Y h:i A" }}</span></p>
+                            <p class="mb-2">{{ assignment.description|default:"No description provided." }}</p>
+                            <div class="mt-2">
+                                {% if assignment.file %}
+                                    <a href="{{ assignment.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-download"></i> View Attachment</a>
+                                {% endif %}
+                                <a href="{% url 'courses:teacher_view_submissions' 'assignment' assignment.id %}" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-eye"></i> View Submissions</a>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center py-4">No assignments added yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROJECTS TAB -->
+            <div class="tab-pane fade" id="projects" role="tabpanel">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold m-0"><i class="bi bi-kanban text-success me-2"></i> Projects</h4>
+                        <button type="button" class="btn btn-success rounded-pill" data-bs-toggle="modal" data-bs-target="#addProjectModal"><i class="bi bi-plus-lg"></i> Add Project</button>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for project in course.projects.all %}
+                        <div class="list-group-item px-0 py-3">
+                            <h6 class="fw-bold mb-1">{{ project.title }}</h6>
+                            <p class="text-muted small mb-2">Due: <span class="text-danger">{{ project.due_date|date:"M d, Y h:i A" }}</span></p>
+                            <p class="mb-2">{{ project.description|default:"No description provided." }}</p>
+                            <div class="mt-2">
+                                {% if project.file %}
+                                    <a href="{{ project.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-download"></i> View Attachment</a>
+                                {% endif %}
+                                <a href="{% url 'courses:teacher_view_submissions' 'project' project.id %}" class="btn btn-sm btn-outline-success rounded-pill"><i class="bi bi-eye"></i> View Submissions</a>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted text-center py-4">No projects added yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- NOTES TAB -->
+            <div class="tab-pane fade" id="notes" role="tabpanel">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold m-0"><i class="bi bi-file-earmark-pdf-fill text-warning me-2"></i> Study Notes</h4>
+                        <button type="button" class="btn btn-warning rounded-pill" data-bs-toggle="modal" data-bs-target="#addNoteModal"><i class="bi bi-plus-lg"></i> Upload Note</button>
+                    </div>
+                    <div class="row">
+                        {% for note in course.notes.all %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card bg-light border-0 rounded-3 h-100">
+                                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                                    <div class="text-truncate pe-3">
+                                        <h6 class="fw-bold mb-0 text-truncate">{{ note.title }}</h6>
+                                        <small class="text-muted">{{ note.uploaded_at|date:"M d, Y" }}</small>
+                                    </div>
+                                    <a href="{{ note.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-download"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12"><p class="text-muted text-center py-4">No notes uploaded yet.</p></div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ATTENDANCE TAB -->
+            <div class="tab-pane fade" id="attendance" role="tabpanel">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold m-0"><i class="bi bi-person-check-fill text-secondary me-2"></i> Attendance Records</h4>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle datatable w-100 mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Total Classes Booked</th>
+                                    <th>Classes Attended</th>
+                                    <th>Attendance %</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sa in student_attendance_data %}
+                                <tr>
+                                    <td class="fw-bold">{{ sa.student.user.get_full_name|default:sa.student.user.username }}</td>
+                                    <td>{{ sa.total_booked }}</td>
+                                    <td>{{ sa.total_attended }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="me-2 fw-bold {% if sa.percentage >= 75 %}text-success{% elif sa.percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ sa.percentage }}%</span>
+                                            <div class="progress flex-grow-1" style="height: 6px;">
+                                                <div class="progress-bar {% if sa.percentage >= 75 %}bg-success{% elif sa.percentage >= 50 %}bg-warning{% else %}bg-danger{% endif %}" role="progressbar" style="width: {{ sa.percentage }}%;" aria-valuenow="{{ sa.percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="openAttendanceModal('{{ sa.student.id }}')">
+                                            <i class="bi bi-eye me-1"></i> Details
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Add Recorded Class Modal removed -->
+
+<!-- Add Assignment Modal -->
+<div class="modal fade" id="addAssignmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" action="{% url 'courses:teacher_add_course_content' course.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="content_type" value="assignment">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Assignment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Title</label>
+                        <input type="text" name="title" class="form-control rounded-pill" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Due Date & Time</label>
+                        <input type="datetime-local" name="due_date" class="form-control rounded-pill" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control rounded-4" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Attachment (Optional)</label>
+                        <input type="file" name="file" class="form-control rounded-pill">
+                    </div>
+                    
+                    <div class="mb-3 border p-3 rounded-4 bg-light">
+                        <label class="form-label fw-bold mb-2">Assign To</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="assign_type_assignment" id="assignAllAssignment" value="all" checked onchange="toggleSpecificStudents('assignment', false)">
+                            <label class="form-check-label" for="assignAllAssignment">All Enrolled Students</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="assign_type_assignment" id="assignSpecificAssignment" value="specific" onchange="toggleSpecificStudents('assignment', true)">
+                            <label class="form-check-label" for="assignSpecificAssignment">Specific Students</label>
+                        </div>
+                        <div class="mt-3 d-none" id="specificStudentsContainer_assignment">
+                            <label class="form-label fw-bold small">Select Students</label>
+                            <select name="assigned_students_assignment" class="form-select rounded-3" multiple size="4">
+                                {% for enrollment in course.enrollments.all %}
+                                    <option value="{{ enrollment.student.id }}">{{ enrollment.student.user.get_full_name|default:enrollment.student.user.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">Hold Ctrl (Windows) or Cmd (Mac) to select multiple students.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Assignment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Project Modal -->
+<div class="modal fade" id="addProjectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" action="{% url 'courses:teacher_add_course_content' course.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="content_type" value="project">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Add Project</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Title</label>
+                        <input type="text" name="title" class="form-control rounded-pill" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Due Date & Time</label>
+                        <input type="datetime-local" name="due_date" class="form-control rounded-pill" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Description</label>
+                        <textarea name="description" class="form-control rounded-4" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Attachment (Optional)</label>
+                        <input type="file" name="file" class="form-control rounded-pill">
+                    </div>
+                    
+                    <div class="mb-3 border p-3 rounded-4 bg-light">
+                        <label class="form-label fw-bold mb-2">Assign To</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="assign_type_project" id="assignAllProject" value="all" checked onchange="toggleSpecificStudents('project', false)">
+                            <label class="form-check-label" for="assignAllProject">All Enrolled Students</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="assign_type_project" id="assignSpecificProject" value="specific" onchange="toggleSpecificStudents('project', true)">
+                            <label class="form-check-label" for="assignSpecificProject">Specific Students</label>
+                        </div>
+                        <div class="mt-3 d-none" id="specificStudentsContainer_project">
+                            <label class="form-label fw-bold small">Select Students</label>
+                            <select name="assigned_students_project" class="form-select rounded-3" multiple size="4">
+                                {% for enrollment in course.enrollments.all %}
+                                    <option value="{{ enrollment.student.id }}">{{ enrollment.student.user.get_full_name|default:enrollment.student.user.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">Hold Ctrl (Windows) or Cmd (Mac) to select multiple students.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success rounded-pill px-4">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal fade" id="addNoteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" action="{% url 'courses:teacher_add_course_content' course.id %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="content_type" value="note">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Upload Study Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Note Title</label>
+                        <input type="text" name="title" class="form-control rounded-pill" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">File (PDF/Word/Images)</label>
+                        <input type="file" name="file" class="form-control rounded-pill" required>
+                    </div>
+                    
+                    <div class="mb-3 border p-3 rounded-4 bg-light">
+                        <label class="form-label fw-bold mb-2">Assign To</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="assign_type_note" id="assignAllNote" value="all" checked onchange="toggleSpecificStudents('note', false)">
+                            <label class="form-check-label" for="assignAllNote">All Enrolled Students</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="assign_type_note" id="assignSpecificNote" value="specific" onchange="toggleSpecificStudents('note', true)">
+                            <label class="form-check-label" for="assignSpecificNote">Specific Students</label>
+                        </div>
+                        <div class="mt-3 d-none" id="specificStudentsContainer_note">
+                            <label class="form-label fw-bold small">Select Students</label>
+                            <select name="assigned_students_note" class="form-select rounded-3" multiple size="4">
+                                {% for enrollment in course.enrollments.all %}
+                                    <option value="{{ enrollment.student.id }}">{{ enrollment.student.user.get_full_name|default:enrollment.student.user.username }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text small">Hold Ctrl (Windows) or Cmd (Mac) to select multiple students.</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-warning rounded-pill px-4">Upload Note</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Edit Recording Modals (moved outside to prevent backdrop issues) -->
+{% for rc in course.recorded_classes.all %}
+                        <!-- Edit Recording Modal -->
+                        <div class="modal fade" id="editRecordingModal{{ rc.id }}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content rounded-4 border-0 shadow">
+                                    <form action="{% url 'courses:toggle_recording_visibility' rc.id %}" method="post">
+                                        {% csrf_token %}
+                                        <div class="modal-header border-0 pb-0">
+                                            <h5 class="modal-title fw-bold">Recording Settings</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="form-check form-switch mb-3">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="recording_visible{{ rc.id }}" name="recording_visible" {% if rc.is_visible_to_students %}checked{% endif %}>
+                                                <label class="form-check-label fw-bold" for="recording_visible{{ rc.id }}">Visible to Students</label>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-bold small">Auto-Vanish Date & Time (Optional)</label>
+                                                <input type="datetime-local" class="form-control" name="recording_expires_at" value="{{ rc.expires_at|date:'Y-m-d\TH:i' }}">
+                                                <div class="form-text">Leave blank to keep it indefinitely.</div>
+                                            </div>
+                                            
+                                            <div class="mb-2 fw-bold small">Assign To</div>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="radio" name="assign_type_recording_{{ rc.id }}" id="assignAllRecording{{ rc.id }}" value="all" {% if rc.assigned_to_all %}checked{% endif %} onchange="document.getElementById('specificStudentsContainer{{ rc.id }}').classList.add('d-none')">
+                                                <label class="form-check-label" for="assignAllRecording{{ rc.id }}">All Enrolled Students</label>
+                                            </div>
+                                            <div class="form-check mb-3">
+                                                <input class="form-check-input" type="radio" name="assign_type_recording_{{ rc.id }}" id="assignSpecificRecording{{ rc.id }}" value="specific" {% if not rc.assigned_to_all %}checked{% endif %} onchange="document.getElementById('specificStudentsContainer{{ rc.id }}').classList.remove('d-none')">
+                                                <label class="form-check-label" for="assignSpecificRecording{{ rc.id }}">Specific Students</label>
+                                            </div>
+                                            
+                                            <div class="{% if rc.assigned_to_all %}d-none{% endif %}" id="specificStudentsContainer{{ rc.id }}">
+                                                <select name="assigned_students_recording_{{ rc.id }}" class="form-select rounded-3" multiple size="4">
+                                                    {% if rc.live_class %}
+                                                        {% for booking in rc.live_class.bookings.all %}
+                                                        <option value="{{ booking.student.id }}" {% if booking.student in rc.assigned_students.all %}selected{% endif %}>{{ booking.student.user.get_full_name|default:booking.student.user.username }}</option>
+                                                        {% endfor %}
+                                                    {% else %}
+                                                        {% for enrollment in course.enrollments.all %}
+                                                        <option value="{{ enrollment.student.id }}" {% if enrollment.student in rc.assigned_students.all %}selected{% endif %}>{{ enrollment.student.user.get_full_name|default:enrollment.student.user.username }}</option>
+                                                        {% endfor %}
+                                                    {% endif %}
+                                                </select>
+                                                <div class="form-text small">Hold Ctrl/Cmd to select multiple students.</div>
+                                            </div>
+                                        </div>
+{% endfor %}
+
+<!-- Attendance Details Modals (moved outside to prevent backdrop issues) -->
+{% for sa in student_attendance_data %}
+<div class="modal fade" id="attendanceDetailsModal{{ sa.student.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="bi bi-person-lines-fill me-2"></i>Attendance Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 pt-3">
+                <p class="mb-3 text-muted"><strong>Student:</strong> <span class="text-dark">{{ sa.student.user.get_full_name|default:sa.student.user.username }}</span></p>
+                <div class="list-group list-group-flush">
+                    {% for record in sa.records %}
+                    <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center border-bottom border-light">
+                        <div>
+                            <h6 class="mb-1 text-truncate" style="max-width: 250px;" title="{{ record.live_class.title }}">{{ record.live_class.title }}</h6>
+                            <small class="text-muted"><i class="bi bi-calendar-event me-1"></i> {{ record.live_class.start_time|date:"M d, Y, h:i A" }}</small>
+                        </div>
+                        <div>
+                            {% if record.status == 'present' %}
+                                <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2"><i class="bi bi-check-circle me-1"></i> Present</span>
+                            {% elif record.status == 'partial' %}
+                                <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2"><i class="bi bi-exclamation-circle me-1"></i> Partial</span>
+                            {% else %}
+                                <span class="badge bg-danger-subtle text-danger rounded-pill px-3 py-2"><i class="bi bi-x-circle me-1"></i> Absent</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+    function openAttendanceModal(studentId) {
+        var modalEl = document.getElementById('attendanceDetailsModal' + studentId);
+        if (modalEl) {
+            // Move modal to body to fix z-index stacking context issues
+            if (modalEl.parentNode !== document.body) {
+                document.body.appendChild(modalEl);
+            }
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) {
+                modal = new bootstrap.Modal(modalEl);
+            }
+            modal.show();
+        } else {
+            console.error('Modal not found for student ' + studentId);
+        }
+    }
+</script>
+{% endblock %}

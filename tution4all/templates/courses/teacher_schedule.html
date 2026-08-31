@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Schedule - Tuition4All{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary m-0"><i class="bi bi-calendar-week me-2"></i>My Teaching Schedule</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+    </div>
+    
+    <div class="alert alert-info border-0 rounded-3 shadow-sm mb-4">
+        <i class="bi bi-info-circle me-1"></i>
+        <strong>Scheduled Classes:</strong> Below is the list of all your scheduled classes. Click on any class to view the students who have booked it.
+    </div>
+
+    <div class="row">
+        <!-- Booked Classes Section -->
+        <div class="col-md-6 mb-4">
+            <h4 class="fw-bold mb-3 text-success"><i class="bi bi-calendar-check me-2"></i>Booked Classes</h4>
+            <div class="accordion shadow-sm" id="bookedAccordion">
+                {% for lc in booked_classes %}
+                    <div class="accordion-item border-0 border-bottom">
+                        <h2 class="accordion-header" id="headingBooked{{ lc.id }}">
+                            <button class="accordion-button collapsed py-3 {% if lc.has_ended %}bg-light text-muted{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseBooked{{ lc.id }}" aria-expanded="false" aria-controls="collapseBooked{{ lc.id }}">
+                                <div class="d-flex justify-content-between w-100 pe-3 align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">
+                                            {% if lc.class_type == 'public' %}
+                                                <span class="badge bg-info me-1">👥 Group</span>
+                                            {% else %}
+                                                <span class="badge bg-success me-1">👤 1-on-1</span>
+                                            {% endif %}
+                                            {{ lc.title }}
+                                        </h6>
+                                        <div class="small">
+                                            <i class="bi bi-calendar-event me-1 text-primary"></i>
+                                            {{ lc.start_time|date:"D, M d, Y" }}
+                                            <span class="mx-2">|</span>
+                                            <i class="bi bi-clock me-1 text-warning"></i>
+                                            {{ lc.start_time|time:"h:i A" }} - {{ lc.end_time|time:"h:i A" }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-success rounded-pill px-3 py-2"><i class="bi bi-person-check-fill me-1"></i>{{ lc.bookings.count }} Booked</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapseBooked{{ lc.id }}" class="accordion-collapse collapse" aria-labelledby="headingBooked{{ lc.id }}" data-bs-parent="#bookedAccordion">
+                            <div class="accordion-body bg-white p-4">
+                                <h6 class="fw-bold mb-3 text-secondary border-bottom pb-2">Enrolled Students for this Class</h6>
+                                <div class="list-group list-group-flush">
+                                    {% for booking in lc.bookings.all %}
+                                        <div class="list-group-item px-0 py-3 d-flex align-items-center">
+                                            {% if booking.student.photo %}
+                                                <img src="{{ booking.student.photo.url }}" class="rounded-circle me-3" width="50" height="50" style="object-fit: cover;">
+                                            {% else %}
+                                                <div class="bg-primary text-white rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; font-size: 1.2rem; font-weight: bold;">
+                                                    {{ booking.student.user.username|make_list|first|upper }}
+                                                </div>
+                                            {% endif %}
+                                            
+                                            <div class="flex-grow-1">
+                                                <h6 class="fw-bold mb-1">{{ booking.student.user.get_full_name|default:booking.student.user.username }}</h6>
+                                                <p class="text-muted small mb-0"><i class="bi bi-envelope me-1"></i>{{ booking.student.user.email }}</p>
+                                            </div>
+                                            
+                                            <div>
+                                                <a href="{% url 'courses:teacher_student_detail' booking.student.id %}" class="btn btn-sm btn-outline-primary rounded-pill">
+                                                    <i class="bi bi-person-lines-fill me-1"></i>View Record
+                                                </a>
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-4 border rounded bg-white shadow-sm">
+                        <i class="bi bi-calendar-x text-muted mb-2 d-block" style="font-size: 2rem;"></i>
+                        <h6 class="text-muted mb-0">No booked classes yet.</h6>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Unbooked Classes Section -->
+        <div class="col-md-6 mb-4">
+            <h4 class="fw-bold mb-3 text-warning"><i class="bi bi-calendar-minus me-2"></i>Unbooked Classes</h4>
+            <div class="accordion shadow-sm" id="unbookedAccordion">
+                {% for lc in unbooked_classes %}
+                    <div class="accordion-item border-0 border-bottom">
+                        <h2 class="accordion-header" id="headingUnbooked{{ lc.id }}">
+                            <button class="accordion-button collapsed py-3 {% if lc.has_ended %}bg-light text-muted{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapseUnbooked{{ lc.id }}" aria-expanded="false" aria-controls="collapseUnbooked{{ lc.id }}">
+                                <div class="d-flex justify-content-between w-100 pe-3 align-items-center">
+                                    <div>
+                                        <h6 class="fw-bold mb-1">
+                                            {% if lc.class_type == 'public' %}
+                                                <span class="badge bg-info me-1">👥 Group</span>
+                                            {% else %}
+                                                <span class="badge bg-success me-1">👤 1-on-1</span>
+                                            {% endif %}
+                                            {{ lc.title }}
+                                        </h6>
+                                        <div class="small">
+                                            <i class="bi bi-calendar-event me-1 text-primary"></i>
+                                            {{ lc.start_time|date:"D, M d, Y" }}
+                                            <span class="mx-2">|</span>
+                                            <i class="bi bi-clock me-1 text-warning"></i>
+                                            {{ lc.start_time|time:"h:i A" }} - {{ lc.end_time|time:"h:i A" }}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-secondary rounded-pill px-3 py-2">0 Booked</span>
+                                    </div>
+                                </div>
+                            </button>
+                        </h2>
+                        <div id="collapseUnbooked{{ lc.id }}" class="accordion-collapse collapse" aria-labelledby="headingUnbooked{{ lc.id }}" data-bs-parent="#unbookedAccordion">
+                            <div class="accordion-body bg-white p-4 text-center text-muted">
+                                <i class="bi bi-person-x fs-1 text-light mb-2 d-block"></i>
+                                <p class="mb-0">No students have booked this slot yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-4 border rounded bg-white shadow-sm">
+                        <i class="bi bi-check-circle text-muted mb-2 d-block" style="font-size: 2rem;"></i>
+                        <h6 class="text-muted mb-0">No unbooked classes!</h6>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

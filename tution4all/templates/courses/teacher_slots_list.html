@@ -1,0 +1,533 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Slot Availability Report - Tuition4All{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+body { font-family: 'Outfit', sans-serif; background: #f0f4ff; }
+
+.page-header {
+    background: linear-gradient(135deg, #4361ee 0%, #7209b7 100%);
+    border-radius: 20px;
+    padding: 32px 36px;
+    color: white;
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+}
+
+.stat-card {
+    border-radius: 16px;
+    background: white;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    padding: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #f1f5f9;
+}
+.stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.09); }
+
+.stat-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.filter-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e8edf5;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.table-card {
+    background: white;
+    border-radius: 20px;
+    border: 1px solid #e8edf5;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    overflow: hidden;
+    margin-bottom: 40px;
+}
+
+.card-header-custom {
+    background: linear-gradient(to right, #f8faff, #eef2ff);
+    border-bottom: 2px solid #e8edf5;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.badge-free {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    white-space: nowrap;
+}
+.badge-busy {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    display: inline-block;
+    white-space: nowrap;
+}
+
+#slots-table thead th {
+    background: #f8faff;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 14px 10px;
+    white-space: nowrap;
+}
+
+#slots-table tbody tr { transition: background 0.15s; cursor: default; }
+#slots-table tbody tr:hover { background: #f5f7ff !important; }
+
+#slots-table tbody td {
+    padding: 13px 10px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.855rem;
+    color: #374151;
+}
+
+.student-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 0.71rem;
+    font-weight: 600;
+    border: 1px solid #c7d2fe;
+    margin: 2px;
+}
+
+.booking-bar {
+    background: #e2e8f0;
+    border-radius: 99px;
+    height: 6px;
+    overflow: hidden;
+    min-width: 70px;
+    margin-top: 4px;
+}
+.booking-bar-fill { height: 100%; border-radius: 99px; }
+
+.empty-state { padding: 80px 20px; text-align: center; }
+.empty-state-icon { font-size: 4rem; color: #cbd5e1; margin-bottom: 16px; display: block; }
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-control:focus, .form-select:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 3px rgba(67,97,238,0.12);
+}
+
+.btn-primary-grad {
+    background: linear-gradient(135deg, #4361ee, #7209b7);
+    border: none;
+    color: white !important;
+    font-weight: 700;
+    padding: 11px 24px;
+    border-radius: 12px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: inline-block;
+}
+.btn-primary-grad:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(67,97,238,0.35);
+    color: white;
+}
+
+/* DataTable Buttons styling */
+.dt-buttons .dt-button {
+    background: white !important;
+    border: 1.5px solid #e2e8f0 !important;
+    color: #475569 !important;
+    font-weight: 600 !important;
+    padding: 8px 16px !important;
+    border-radius: 9px !important;
+    font-size: 0.82rem !important;
+    margin-right: 6px !important;
+    transition: all 0.2s !important;
+    box-shadow: none !important;
+}
+.dt-buttons .dt-button:hover {
+    background: #f0f4ff !important;
+    border-color: #4361ee !important;
+    color: #4361ee !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4" style="max-width: 1400px;">
+
+    <!-- Page Header -->
+    <div class="page-header shadow">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div style="position:relative; z-index:1;">
+                <h1 class="fw-bold mb-1" style="font-size: 1.75rem; letter-spacing:-0.5px;">
+                    <i class="bi bi-table me-2 opacity-90"></i>Slot Availability Report
+                </h1>
+                <p class="mb-0 opacity-75" style="font-size: 0.88rem;">
+                    List of all scheduled classes from <strong>{{ start_date }}</strong> to <strong>{{ end_date }}</strong> &mdash; with complete booking &amp; student details.
+                </p>
+            </div>
+            <div style="position:relative;z-index:1;">
+                <a href="{% url 'courses:teacher_calendar_view' %}" class="btn btn-light fw-bold rounded-pill px-4 shadow-sm">
+                    <i class="bi bi-calendar3 me-2"></i>Back to Calendar
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-card shadow-sm">
+        <h6 class="fw-bold text-muted mb-3 text-uppercase" style="font-size: 0.73rem; letter-spacing: 0.09em;">
+            <i class="bi bi-sliders me-2 text-primary"></i>Filter &amp; Search Slots
+        </h6>
+        <form method="GET" id="filter-form">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-calendar-event me-1"></i>From Date
+                    </label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date }}" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-calendar-event-fill me-1"></i>To Date
+                    </label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date }}" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-bold text-muted mb-1">
+                        <i class="bi bi-funnel me-1"></i>Status
+                    </label>
+                    <select name="status" class="form-select">
+                        <option value="">All Slots</option>
+                        <option value="free" {% if status_filter == 'free' %}selected{% endif %}>Available (Free)</option>
+                        <option value="busy" {% if status_filter == 'busy' %}selected{% endif %}>Booked (Busy)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary-grad w-100">
+                        <i class="bi bi-search me-2"></i>Generate Report
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'courses:teacher_slots_list' %}" class="btn btn-outline-secondary w-100 rounded-3 fw-bold">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Summary Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card d-flex align-items-center gap-3">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-grid-3x3"></i></div>
+                <div>
+                    <div class="text-muted small fw-bold">Total Slots</div>
+                    <div class="fs-4 fw-bold text-dark">{{ slots|length }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-calendar-x-fill"></i></div>
+                <div>
+                    <div class="text-muted small fw-bold">Booked Slots</div>
+                    <div class="fs-4 fw-bold text-dark" id="busy-count">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card d-flex align-items-center gap-3">
+                <div class="stat-icon bg-success bg-opacity-10 text-success"><i class="bi bi-calendar-check-fill"></i></div>
+                <div>
+                    <div class="text-muted small fw-bold">Free Slots</div>
+                    <div class="fs-4 fw-bold text-dark" id="free-count">—</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card d-flex align-items-center gap-3">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-percent"></i></div>
+                <div>
+                    <div class="text-muted small fw-bold">Booking Rate</div>
+                    <div class="fs-4 fw-bold text-dark" id="booking-rate">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Table Card -->
+    <div class="table-card shadow-sm">
+        <div class="card-header-custom">
+            <div>
+                <h5 class="fw-bold mb-1 text-dark" style="letter-spacing:-0.3px;">
+                    <i class="bi bi-list-check text-primary me-2"></i>Complete Slot Report
+                </h5>
+                <p class="text-muted small mb-0">Click column headers to re-sort &middot; Use the search box to find classes or students</p>
+            </div>
+            <!-- Export buttons injected here by DataTables -->
+            <div id="dt-export-container" class="dt-buttons"></div>
+        </div>
+
+        <div class="p-3 p-md-4">
+            {% if slots %}
+            <div class="table-responsive">
+                <table id="slots-table" class="table table-hover align-middle" style="width:100%;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th data-sort="num">Date</th>
+                            <th>Day</th>
+                            <th>Time Range</th>
+                            <th>Status</th>
+                            <th>Class Title</th>
+                            <th>Course</th>
+                            <th>Bookings</th>
+                            <th>Max Seats</th>
+                            <th>Students Enrolled</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for slot in slots %}
+                        <tr data-status="{{ slot.status }}">
+                            <!-- Row Number -->
+                            <td class="text-muted fw-bold" style="font-size:0.78rem; color:#94a3b8!important;">
+                                {{ forloop.counter }}
+                            </td>
+
+                            <!-- Date (hidden unix ts for sorting) -->
+                            <td data-order="{{ slot.start_time|date:'U' }}">
+                                <div class="fw-bold text-dark" style="font-size:0.88rem;">{{ slot.date|date:"d M Y" }}</div>
+                            </td>
+
+                            <!-- Day Name -->
+                            <td>
+                                <span class="badge bg-light text-dark border px-2 py-1" style="font-size:0.72rem; font-weight:700;">
+                                    {{ slot.date|date:"l" }}
+                                </span>
+                            </td>
+
+                            <!-- Time Range -->
+                            <td>
+                                <span class="fw-semibold" style="color:#374151; white-space:nowrap; font-size:0.83rem;">
+                                    <i class="bi bi-clock text-primary me-1" style="font-size:0.72rem;"></i>
+                                    {{ slot.start_time|date:"h:i A" }} &ndash; {{ slot.end_time|date:"h:i A" }}
+                                </span>
+                            </td>
+
+                            <!-- Status Badge -->
+                            <td>
+                                {% if slot.status == 'busy' %}
+                                    <span class="badge-busy"><i class="bi bi-x-circle-fill me-1"></i>Booked</span>
+                                {% else %}
+                                    <span class="badge-free"><i class="bi bi-check-circle-fill me-1"></i>Available</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Class Title -->
+                            <td>
+                                {% if slot.details %}
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-broadcast-pin text-danger" style="font-size:0.8rem; flex-shrink:0;"></i>
+                                        <span class="fw-semibold text-dark" style="font-size:0.85rem;">{{ slot.details.title|truncatechars:35 }}</span>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted fst-italic" style="font-size:0.82rem;">— No Class</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Course -->
+                            <td>
+                                {% if slot.details %}
+                                    <span style="color:#7209b7; font-weight:600; font-size:0.82rem;">
+                                        <i class="bi bi-journal-bookmark me-1"></i>{{ slot.details.course|truncatechars:28 }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted fst-italic" style="font-size:0.82rem;">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Bookings with Progress Bar -->
+                            <td>
+                                {% if slot.details %}
+                                    {% with bc=slot.details.booked_count mc=slot.details.max_capacity %}
+                                    <div class="fw-bold mb-1" style="font-size:0.82rem;">
+                                        <span class="{% if bc >= mc %}text-danger{% elif bc > 0 %}text-warning{% else %}text-muted{% endif %}">{{ bc }}</span>
+                                        <span class="text-muted">/ {{ mc }}</span>
+                                    </div>
+                                    {% if mc > 0 %}
+                                    <div class="booking-bar">
+                                        <div class="booking-bar-fill {% if bc >= mc %}bg-danger{% elif bc > 0 %}bg-warning{% else %}bg-light{% endif %}"
+                                             style="width:{% widthratio bc mc 100 %}%">
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                    {% endwith %}
+                                {% else %}
+                                    <span class="text-muted" style="font-size:0.82rem;">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Max Capacity -->
+                            <td>
+                                {% if slot.details %}
+                                    <span class="badge bg-light text-dark border fw-bold px-2 py-1">
+                                        <i class="bi bi-people me-1"></i>{{ slot.details.max_capacity }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Students Enrolled -->
+                            <td style="max-width:230px;">
+                                {% if slot.details and slot.details.students %}
+                                    {% for sname in slot.details.students %}
+                                        <span class="student-chip">
+                                            <i class="bi bi-person-fill" style="font-size:0.67rem;"></i>{{ sname }}
+                                        </span>
+                                    {% endfor %}
+                                {% elif slot.details %}
+                                    <span class="text-muted fst-italic" style="font-size:0.8rem;">No bookings yet</span>
+                                {% else %}
+                                    <span class="text-muted" style="font-size:0.8rem;">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-calendar-x empty-state-icon"></i>
+                <h4 class="fw-bold text-muted mb-2">No Slots Found</h4>
+                <p class="text-muted mb-4">No scheduled classes match your selected date range or status filter.</p>
+                <a href="{% url 'courses:teacher_slots_list' %}" class="btn btn-primary-grad">
+                    <i class="bi bi-arrow-repeat me-2"></i>Reset Filters
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+<script>
+$(document).ready(function () {
+
+    var table = $('#slots-table').DataTable({
+        order: [[1, 'asc']],
+        pageLength: 25,
+        lengthMenu: [10, 25, 50, 100],
+        searching: true,
+        language: {
+            searchPlaceholder: 'Search by class, course, student...',
+            lengthMenu: 'Show _MENU_ slots per page',
+            info: 'Showing _START_–_END_ of _TOTAL_ time slots',
+            paginate: { previous: '&laquo; Prev', next: 'Next &raquo;' }
+        },
+        columnDefs: [
+            { orderable: false, targets: [0, 9] },
+            { type: 'num', targets: 1 }
+        ],
+        buttons: [
+            {
+                extend: 'copyHtml5',
+                text: '<i class="bi bi-clipboard me-1"></i> Copy',
+                exportOptions: { columns: [1,2,3,4,5,6,7,8] }
+            },
+            {
+                extend: 'csvHtml5',
+                title: 'Slot_Availability_Report',
+                text: '<i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV',
+                exportOptions: { columns: [1,2,3,4,5,6,7,8] }
+            },
+            {
+                extend: 'print',
+                text: '<i class="bi bi-printer me-1"></i> Print',
+                exportOptions: { columns: [1,2,3,4,5,6,7,8] }
+            }
+        ]
+    });
+
+    // Move export buttons into the header
+    table.buttons().container().appendTo('#dt-export-container');
+
+    // Compute + display live stats
+    var busy = 0, free = 0, total = 0;
+    $('#slots-table tbody tr').each(function () {
+        total++;
+        if ($(this).data('status') === 'busy') busy++;
+        else free++;
+    });
+    $('#busy-count').text(busy);
+    $('#free-count').text(free);
+    $('#booking-rate').text(total > 0 ? Math.round((busy / total) * 100) + '%' : '0%');
+
+    // Date range validation
+    $('#filter-form').on('submit', function (e) {
+        var s = $('[name="start_date"]').val();
+        var d = $('[name="end_date"]').val();
+        if (s && d && s > d) {
+            e.preventDefault();
+            alert('⚠️ "From Date" cannot be after "To Date". Please correct and try again.');
+        }
+    });
+});
+</script>
+{% endblock %}

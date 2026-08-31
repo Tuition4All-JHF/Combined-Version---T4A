@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block title %}Contact Us - Tuition4All{% endblock %}
+{% block content %}
+<section class="py-5" style="background: var(--bg-color); min-height: 80vh;">
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="row justify-content-center mb-5">
+            <div class="col-md-8 text-center">
+                <span class="pill-badge mx-auto mb-3">
+                    <span class="material-symbols-outlined" style="font-size: 14px;">mail</span>
+                    Contact Us
+                </span>
+                <h1 class="brand-font fw-bold mb-3" style="font-size: clamp(2rem, 4vw, 3rem); color: var(--text-primary); letter-spacing: -0.02em;">
+                    How can we <span style="font-family: var(--font-serif); font-style: italic; font-weight: 400; color: var(--primary-color);">help you?</span>
+                </h1>
+                <p style="color: var(--text-secondary); max-width: 36rem; margin: 0 auto; font-size: 1.05rem;">
+                    Select your role below so we can route your message to the right support team.
+                </p>
+            </div>
+        </div>
+
+        <!-- Role Tabs & Form -->
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <!-- Role Selector -->
+                <div class="d-flex flex-wrap justify-content-center gap-2 mb-4 p-2 rounded-4" style="background: var(--bg-surface-dim); border: 1px solid var(--border-color);">
+                    <button class="contact-tab active-student w-100 w-sm-auto flex-grow-1" onclick="setRole('Student', this, 'active-student')" id="defaultTab">Student</button>
+                    <button class="contact-tab w-100 w-sm-auto flex-grow-1" onclick="setRole('Parent', this, 'active-parent')">Parent</button>
+                    <button class="contact-tab w-100 w-sm-auto flex-grow-1" onclick="setRole('Tutor', this, 'active-tutor')">Tutor</button>
+                </div>
+
+                <!-- Form Card -->
+                <div class="glow-card p-4 p-md-5">
+                    <form>
+                        <input type="hidden" id="userRole" name="role" value="Student">
+                        
+                        <div class="floating-group mb-4">
+                            <input type="text" class="form-control rounded-3" id="fullName" placeholder=" " required>
+                            <label for="fullName">Full Name</label>
+                        </div>
+                        
+                        <div class="floating-group mb-4">
+                            <input type="email" class="form-control rounded-3" id="emailAddr" placeholder=" " required>
+                            <label for="emailAddr">Email Address</label>
+                        </div>
+                        
+                        <div class="floating-group mb-4">
+                            <select class="form-select rounded-3" id="inquiryType" required>
+                                <option value="" disabled selected hidden></option>
+                                <option value="technical">Technical Support</option>
+                                <option value="billing">Billing Question</option>
+                                <option value="academic">Academic Concern</option>
+                                <option value="other">Other Inquiry</option>
+                            </select>
+                            <label for="inquiryType">What is this regarding?</label>
+                        </div>
+                        
+                        <div class="floating-group mb-4">
+                            <textarea class="form-control rounded-3" id="message" rows="5" placeholder=" " required></textarea>
+                            <label for="message">Your Message</label>
+                        </div>
+                        
+                        <button type="button" class="btn btn-primary w-100 py-3 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2" id="submitBtn">
+                            Send Message <span class="material-symbols-outlined" style="font-size: 18px;">send</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    function setRole(role, btn, activeClass) {
+        document.getElementById('userRole').value = role;
+        
+        // Remove active classes from all tabs
+        const tabs = document.querySelectorAll('.contact-tab');
+        tabs.forEach(t => {
+            t.classList.remove('active-student', 'active-parent', 'active-tutor');
+        });
+        
+        // Add specific active class to clicked tab
+        btn.classList.add(activeClass);
+        
+        // Update button color to match
+        const submitBtn = document.getElementById('submitBtn');
+        if (role === 'Student') {
+            submitBtn.style.background = 'var(--gradient-accent)';
+        } else if (role === 'Parent') {
+            submitBtn.style.background = 'var(--color-success)';
+        } else if (role === 'Tutor') {
+            submitBtn.style.background = 'var(--color-warning)';
+        }
+    }
+    
+    // Initialize default state
+    document.addEventListener('DOMContentLoaded', () => {
+        const defaultTab = document.getElementById('defaultTab');
+        if (defaultTab) {
+            setRole('Student', defaultTab, 'active-student');
+        }
+    });
+</script>
+{% endblock %}

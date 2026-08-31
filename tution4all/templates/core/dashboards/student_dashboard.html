@@ -1,0 +1,1534 @@
+{% extends 'base.html' %}
+{% load dict_extras %}
+
+{% block title %}Student Dashboard - Tution4All
+<script>
+    function openPackageModal(groupId) {
+        const dataEl = document.getElementById('pkg-data-' + groupId);
+        if (!dataEl) return;
+        
+        const classes = JSON.parse(dataEl.textContent);
+        const listEl = document.getElementById('package-classes-list');
+        listEl.innerHTML = '';
+        
+        classes.forEach(c => {
+            let actionHtml = '';
+            if (c.is_ended) {
+                actionHtml = `<a href="${c.transcript_url}" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> Summary</a>`;
+            } else {
+                actionHtml = `<div class="join-container" data-start-time="${c.iso_start}" data-end-time="${c.iso_end}" data-join-url="${c.join_url}">
+                                <button class="btn btn-sm btn-primary rounded-pill px-4 disabled join-btn" style="min-width: 140px;">
+                                    <i class="bi bi-clock-history"></i> <span class="countdown-text">...</span>
+                                </button>
+                              </div>`;
+            }
+            
+            const html = `
+                <div class="list-group-item px-0 py-3 border-bottom-0 mb-2 rounded-3 bg-light" style="padding-left: 15px !important; padding-right: 15px !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1">${c.title}</h6>
+                            <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-1"></i>${c.date} <i class="bi bi-clock ms-2 me-1"></i>${c.time}</p>
+                        </div>
+                        <div>
+                            ${actionHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            listEl.insertAdjacentHTML('beforeend', html);
+        });
+        
+        // Re-initialize countdowns for the newly injected buttons
+        if (typeof initializeCountdowns === 'function') {
+            initializeCountdowns();
+        }
+        
+        var myModal = new bootstrap.Modal(document.getElementById('packageModal'));
+        myModal.show();
+    }
+</script>
+
+{% endblock %}
+
+{% block extra_css %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.9/index.global.min.js'></script>
+<style>
+    .calendar-wrapper {
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        padding: 25px;
+        margin-top: 20px;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+    .fc .fc-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+    }
+    .legend-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 6px;
+    }
+    .fc-event {
+        cursor: pointer;
+        padding: 3px;
+    }
+</style>
+
+<script>
+    function openPackageModal(groupId) {
+        const dataEl = document.getElementById('pkg-data-' + groupId);
+        if (!dataEl) return;
+        
+        const classes = JSON.parse(dataEl.textContent);
+        const listEl = document.getElementById('package-classes-list');
+        listEl.innerHTML = '';
+        
+        classes.forEach(c => {
+            let actionHtml = '';
+            if (c.is_ended) {
+                actionHtml = `<a href="${c.transcript_url}" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> Summary</a>`;
+            } else {
+                actionHtml = `<div class="join-container" data-start-time="${c.iso_start}" data-end-time="${c.iso_end}" data-join-url="${c.join_url}">
+                                <button class="btn btn-sm btn-primary rounded-pill px-4 disabled join-btn" style="min-width: 140px;">
+                                    <i class="bi bi-clock-history"></i> <span class="countdown-text">...</span>
+                                </button>
+                              </div>`;
+            }
+            
+            const html = `
+                <div class="list-group-item px-0 py-3 border-bottom-0 mb-2 rounded-3 bg-light" style="padding-left: 15px !important; padding-right: 15px !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1">${c.title}</h6>
+                            <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-1"></i>${c.date} <i class="bi bi-clock ms-2 me-1"></i>${c.time}</p>
+                        </div>
+                        <div>
+                            ${actionHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            listEl.insertAdjacentHTML('beforeend', html);
+        });
+        
+        // Re-initialize countdowns for the newly injected buttons
+        if (typeof initializeCountdowns === 'function') {
+            initializeCountdowns();
+        }
+        
+        var myModal = new bootstrap.Modal(document.getElementById('packageModal'));
+        myModal.show();
+    }
+</script>
+
+{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body text-center p-4">
+                {% if request.user.student_profile.photo %}
+                    <img src="{{ request.user.student_profile.photo.url }}" class="rounded-circle mb-3 shadow-sm" width="100" height="100" style="object-fit: cover;">
+                {% else %}
+                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3 text-white shadow-sm" style="width: 100px; height: 100px; font-size: 2.5rem; font-family: 'Outfit', sans-serif;">
+                        {{ request.user.username|make_list|first|upper }}
+                    </div>
+                {% endif %}
+                <h4 class="fw-bold">{{ request.user.get_full_name|default:request.user.username }}</h4>
+                <span class="badge bg-light text-primary border border-primary px-3 py-2 rounded-pill">Student Account</span>
+                <div class="mt-4 p-3 bg-light rounded-4 text-start border border-secondary border-opacity-25">
+                    <p class="text-muted small fw-bold mb-1">Your Student ID</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-primary fw-bolder fs-5 user-select-all">{{ request.user.student_profile.student_id }}</span>
+                    </div>
+                    <p class="text-muted" style="font-size: 0.7rem; margin-top: 5px;">Give this ID to your parents to link their account.</p>
+                </div>
+            </div>
+        </div>
+        <div class="list-group shadow-sm border-0" id="studentTabs" role="tablist">
+            <a href="#overview" class="list-group-item list-group-item-action active fw-bold border-0" data-bs-toggle="list" role="tab"><i class="bi bi-grid-1x2-fill me-2"></i> Overview</a>
+            <a href="#courses" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-journal-bookmark-fill me-2"></i> My Courses</a>
+            <!-- Calendar link removed to prevent duplicate confusion. Using the #booked-sessions tab instead -->
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" id="tab-booked-live" data-bs-toggle="list" href="#booked-sessions" role="tab"><i class="bi bi-bookmark-check me-2"></i> My Booked Sessions</a>
+            <!-- Recorded Classes tab removed (feature not yet available) -->
+            <a href="#assignments" class="list-group-item list-group-item-action border-0 d-flex justify-content-between align-items-center" data-bs-toggle="list" role="tab">
+                <span><i class="bi bi-file-earmark-text-fill me-2"></i> Assignments</span>
+                {% if pending_assignments_count > 0 %}
+                <span class="badge bg-danger rounded-pill">{{ pending_assignments_count }}</span>
+                {% endif %}
+            </a>
+            <a href="#projects" class="list-group-item list-group-item-action border-0 d-flex justify-content-between align-items-center" data-bs-toggle="list" role="tab">
+                <span><i class="bi bi-kanban-fill me-2"></i> Projects</span>
+                {% if pending_projects_count > 0 %}
+                <span class="badge bg-danger rounded-pill">{{ pending_projects_count }}</span>
+                {% endif %}
+            </a>
+            <a href="#study-notes" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-journal-text me-2"></i> Study Notes</a>
+            <a href="#attendance" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-calendar-check-fill me-2"></i> Attendance</a>
+            <a href="{% url 'chat:index' %}" class="list-group-item list-group-item-action fw-bold border-0 text-success bg-light d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-whatsapp me-2"></i> Open Web Chat</span>
+                {% if unread_chat_count > 0 %}
+                <span class="badge bg-danger rounded-pill">{{ unread_chat_count }}</span>
+                {% endif %}
+            </a>
+            <a href="#payments" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-credit-card-fill me-2"></i> Payments</a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        
+        {% if parent_link_requests %}
+        <div class="alert alert-warning border-warning shadow-sm rounded-4 mb-4">
+            <h5 class="fw-bold mb-3 text-dark"><i class="bi bi-shield-lock-fill me-2 text-warning"></i> Parent Link Requests</h5>
+            <p class="mb-3 text-dark">The following users have requested to link to your account as a parent or guardian. Please verify before approving.</p>
+            <div class="list-group">
+                {% for req in parent_link_requests %}
+                <div class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center rounded-3 mb-2 border-warning">
+                    <div>
+                        <h6 class="mb-0 fw-bold">{{ req.parent.user.get_full_name|default:req.parent.user.username }}</h6>
+                        <small class="text-muted">Parent Account</small>
+                    </div>
+                    <div>
+                        <form action="{% url 'core:approve_parent_link' req.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3 shadow-sm me-2"><i class="bi bi-check-lg"></i> Approve</button>
+                        </form>
+                        <form action="{% url 'core:reject_parent_link' req.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm"><i class="bi bi-x-lg"></i> Reject</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="tab-content" id="nav-tabContent">
+            
+            <!-- OVERVIEW TAB -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4 brand-font">Dashboard Overview</h2>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-book position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75 brand-font">Enrolled Courses</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">{{ request.user.student_profile.enrollments.count }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card text-white shadow-sm border-0 rounded-4 h-100" style="background: linear-gradient(135deg, #4cc9f0 0%, #4895ef 100%);">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-check-circle position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75">Completed Assignments</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card text-white shadow-sm border-0 rounded-4 h-100" style="background: linear-gradient(135deg, #f72585 0%, #b5179e 100%);">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-camera-video position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75">Upcoming Classes</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">{{ live_classes.count|default:0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <!-- Upcoming Classes Widget -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold m-0"><i class="bi bi-camera-video text-danger me-2"></i> Upcoming Booked Classes</h5>
+                                <a href="#booked-sessions" data-bs-toggle="list" class="btn btn-sm btn-outline-primary rounded-pill">View All</a>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    {% for booking in upcoming_booked_sessions %}
+                                    <div class="list-group-item px-0 py-3 border-bottom-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <h6 class="fw-bold mb-0 text-truncate">{{ booking.live_class.title }}</h6>
+                                            <span class="badge bg-info text-dark ms-2" style="white-space: nowrap;">In {{ booking.live_class.start_time|timeuntil }}</span>
+                                        </div>
+                                        <p class="text-muted small mb-2"><i class="bi bi-calendar-event"></i> {{ booking.live_class.start_time|date:"M d, Y" }} at {{ booking.live_class.start_time|time:"h:i A" }}</p>
+                                        <div class="join-container mt-2" data-start-time="{{ booking.live_class.start_time|date:'c' }}" data-end-time="{{ booking.live_class.end_time|date:'c' }}" data-join-url="{% url 'courses:join_live_class' booking.live_class.id %}">
+                                            <button class="btn btn-sm btn-primary rounded-pill w-100 disabled join-btn" title="Starts at {{ booking.live_class.start_time|time:'h:i A' }}">
+                                                <i class="bi bi-clock-history"></i> <span class="countdown-text">Calculating...</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center py-4">
+                                        <p class="text-muted mb-0">No upcoming classes booked.</p>
+                                        <a href="#live" data-bs-toggle="list" class="btn btn-outline-primary btn-sm rounded-pill mt-2">Browse Live Classes</a>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pending Tasks Widget -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold m-0"><i class="bi bi-exclamation-circle text-warning me-2"></i> Pending Tasks</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    {% for task in pending_tasks %}
+                                    <div class="list-group-item px-0 py-3 border-bottom-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <h6 class="fw-bold mb-0 text-truncate">
+                                                <span class="badge bg-secondary me-2">{{ task.type }}</span>{{ task.item.title }}
+                                            </h6>
+                                            {% if task.status == 'Not Submitted' %}
+                                                <span class="badge bg-danger ms-2">Pending</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark ms-2">{{ task.status }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-muted small mb-2">Due: {{ task.due|date:"M d, Y"|default:"No Due Date" }}</p>
+                                        <a href="{% url 'courses:student_submit_work' %}?type={{ task.type|lower }}&id={{ task.item.id }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">Submit Work</a>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center py-4">
+                                        <p class="text-muted mb-0">No pending tasks found. Great job!</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MY COURSES TAB -->
+            <div class="tab-pane fade" id="courses" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">My Enrolled Courses</h2>
+                <div class="row">
+                    {% for enrollment in request.user.student_profile.enrollments.all %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <h5 class="card-title fw-bold text-primary">{{ enrollment.course.title }}</h5>
+                                <p class="text-muted small mb-3"><i class="bi bi-person-fill me-1"></i> Taught by: <a href="{% url 'core:public_teacher_profile' enrollment.course.teacher.id %}" class="text-decoration-none fw-bold">{{ enrollment.course.teacher.user.get_full_name }}</a></p>
+                                <div class="mt-auto">
+                                    <a href="{% url 'courses:detail' enrollment.course.id %}" class="btn btn-outline-primary rounded-pill btn-sm w-100">View Course Details</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0 rounded-4">
+                            <div class="card-body p-5 text-center text-muted">
+                                <i class="bi bi-journal-x fs-1 d-block mb-3"></i>
+                                <h4>No Courses Found</h4>
+                                <p class="mb-4">You have not enrolled in any courses yet.</p>
+                                <a href="{% url 'courses:list' %}" class="btn btn-primary rounded-pill px-4 py-2">Browse Available Courses</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- MY BOOKED SESSIONS TAB -->
+            <div class="tab-pane fade" id="booked-sessions" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold text-primary mb-0">My Booked Sessions</h2>
+                    <div class="ms-auto" style="min-width: 200px;">
+                        <select id="booked-sessions-filter" class="form-select rounded-pill shadow-sm border-0">
+                            <option value="all">All Subjects</option>
+                            {% for course in enrolled_courses %}
+                            <option value="{{ course.id }}">{{ course.title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <ul class="nav nav-pills mb-4" id="bookedSessionsSubTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill px-4 me-2 fw-bold" id="booked-upcoming-sub-tab" data-bs-toggle="pill" data-bs-target="#booked-upcoming-sub" type="button" role="tab" aria-controls="booked-upcoming-sub" aria-selected="true">
+                            Ongoing Sessions
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill px-4 fw-bold" id="booked-ended-sub-tab" data-bs-toggle="pill" data-bs-target="#booked-ended-sub" type="button" role="tab" aria-controls="booked-ended-sub" aria-selected="false">
+                            Ended Sessions
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="bookedSessionsSubTabsContent">
+                    <!-- Ongoing Sessions -->
+                    <div class="tab-pane fade show active" id="booked-upcoming-sub" role="tabpanel" aria-labelledby="booked-upcoming-sub-tab">
+                        <div class="row">
+                            {% for pkg in upcoming_booked_sessions_full %}
+                            <div class="col-md-6 mb-4 booked-session-card" data-course-id="{{ pkg.course.id }}">
+                                <div class="card package-card h-100 shadow-sm border border-2 border-transparent" onclick="openPackageModal('{{ pkg.group_id }}')" style="cursor: pointer; transition: 0.2s; border-radius: 16px;">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold text-primary mb-0" style="font-size: 1.1rem;">{{ pkg.title }}</h6>
+                                            {% if pkg.class_type == 'public' %}
+                                                <span class="badge bg-light text-dark rounded-pill border px-3 py-2"><i class="bi bi-people-fill me-1 text-info"></i> Public</span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark rounded-pill border px-3 py-2"><i class="bi bi-person-fill me-1 text-primary"></i> Private</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-book text-success me-2 fs-5"></i>
+                                            <span class="text-muted">Course: <strong>{{ pkg.course.title }}</strong></span>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-person-badge text-info me-2 fs-5"></i>
+                                            <span class="text-muted">Tutor: <strong>{{ pkg.course.teacher.user.get_full_name|default:pkg.course.teacher.user.username }}</strong></span>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-calendar-event text-primary me-2 fs-5"></i>
+                                            <span class="fw-bold text-dark">
+                                                Starts: {{ pkg.start_time|date:"D, M d, Y" }}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-alarm text-danger me-2 fs-5"></i>
+                                            <span class="fw-bold text-secondary">
+                                                {% if pkg.start_time %}{{ pkg.start_time|time:"h:i A" }} - {{ pkg.end_time|time:"h:i A" }}{% endif %}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-3">
+                                            <i class="bi bi-arrow-repeat me-2 fs-5" style="color: #f39c12;"></i>
+                                            <span class="fw-bold" style="color: #f39c12;">
+                                                {{ pkg.days_str }}
+                                                <span class="text-muted fw-normal ms-1">({{ pkg.total_classes }} classes)</span>
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="text-center mt-3">
+                                            <span class="btn btn-outline-primary rounded-pill fw-bold select-indicator w-100 py-2">View Classes</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Hidden JSON data for this package -->
+                            <script type="application/json" id="pkg-data-{{ pkg.group_id }}">
+                            [
+                                {% for b in pkg.bookings %}
+                                {
+                                    "title": "{{ b.live_class.title|escapejs }}",
+                                    "date": "{{ b.live_class.start_time|date:'M d, Y' }}",
+                                    "time": "{{ b.live_class.start_time|time:'h:i A' }} - {{ b.live_class.end_time|time:'h:i A' }}",
+                                    "is_ended": {% if b.live_class.has_ended %}true{% else %}false{% endif %},
+                                    "join_url": "{% url 'courses:join_live_class' b.live_class.id %}",
+                                    "transcript_url": "{% url 'courses:view_class_transcript' b.live_class.id %}",
+                                    "iso_start": "{{ b.live_class.start_time|date:'c' }}"
+                                }{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            ]
+                            </script>
+                            
+                            {% empty %}
+                            <div class="col-12" id="no-ongoing-sessions">
+                                <div class="card shadow-sm border-0 rounded-4">
+                                    <div class="card-body p-5 text-center text-muted">
+                                        <i class="bi bi-bookmark-x fs-1 d-block mb-3"></i>
+                                        <h4>No Ongoing Packages</h4>
+                                        <p class="mb-0">You haven't booked any upcoming live classes. Go to your enrolled courses to book a package.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Ended Sessions -->
+                    <div class="tab-pane fade" id="booked-ended-sub" role="tabpanel" aria-labelledby="booked-ended-sub-tab">
+                        <div class="row">
+                            {% for pkg in ended_booked_sessions_full %}
+                            <div class="col-md-6 mb-4 booked-session-card" data-course-id="{{ pkg.course.id }}">
+                                <div class="card package-card h-100 shadow-sm border border-2 border-transparent" onclick="openPackageModal('{{ pkg.group_id }}')" style="cursor: pointer; transition: 0.2s; border-radius: 16px; background-color: #f8f9fa;">
+                                    <div class="card-body p-3 opacity-75">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold text-muted mb-0" style="font-size: 1.1rem;">{{ pkg.title }}</h6>
+                                            <span class="badge bg-secondary rounded-pill border px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Ended</span>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-book text-success me-2 fs-5"></i>
+                                            <span class="text-muted">Course: <strong>{{ pkg.course.title }}</strong></span>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-person-badge text-info me-2 fs-5"></i>
+                                            <span class="text-muted">Tutor: <strong>{{ pkg.course.teacher.user.get_full_name|default:pkg.course.teacher.user.username }}</strong></span>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-calendar-event text-primary me-2 fs-5"></i>
+                                            <span class="fw-bold text-dark">
+                                                Started: {{ pkg.start_time|date:"D, M d, Y" }}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-alarm text-danger me-2 fs-5"></i>
+                                            <span class="fw-bold text-secondary">
+                                                {% if pkg.start_time %}{{ pkg.start_time|time:"h:i A" }} - {{ pkg.end_time|time:"h:i A" }}{% endif %}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-3">
+                                            <i class="bi bi-arrow-repeat me-2 fs-5" style="color: #6c757d;"></i>
+                                            <span class="fw-bold" style="color: #6c757d;">
+                                                {{ pkg.days_str }}
+                                                <span class="text-muted fw-normal ms-1">({{ pkg.total_classes }} classes)</span>
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="text-center mt-3">
+                                            <span class="btn btn-outline-secondary rounded-pill fw-bold select-indicator w-100 py-2">View Classes & Summaries</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Hidden JSON data for this package -->
+                            <script type="application/json" id="pkg-data-{{ pkg.group_id }}">
+                            [
+                                {% for b in pkg.bookings %}
+                                {
+                                    "title": "{{ b.live_class.title|escapejs }}",
+                                    "date": "{{ b.live_class.start_time|date:'M d, Y' }}",
+                                    "time": "{{ b.live_class.start_time|time:'h:i A' }} - {{ b.live_class.end_time|time:'h:i A' }}",
+                                    "is_ended": {% if b.live_class.has_ended %}true{% else %}false{% endif %},
+                                    "join_url": "{% url 'courses:join_live_class' b.live_class.id %}",
+                                    "transcript_url": "{% url 'courses:view_class_transcript' b.live_class.id %}",
+                                    "iso_start": "{{ b.live_class.start_time|date:'c' }}"
+                                }{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            ]
+                            </script>
+                            {% empty %}
+                            <div class="col-12">
+                                <div class="alert alert-light border rounded-4 text-center p-4">
+                                    <i class="bi bi-calendar-x text-muted fs-1 mb-2"></i>
+                                    <p class="mb-0 text-muted">No ended packages found.</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECORDED CLASSES TAB -->
+            <div class="tab-pane fade" id="recorded-classes" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">Recorded Classes</h2>
+                <div class="row">
+                    {% for rc in recorded_classes %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold text-dark">{{ rc.title }}</h5>
+                                <p class="text-muted small mb-2">Course: {{ rc.course.title }}</p>
+                                <p class="mb-3">{{ rc.description|truncatewords:15 }}</p>
+                                
+                                {% if rc.live_class %}
+                                <div class="mb-3 p-3 bg-light rounded-3">
+                                    <h6 class="fw-bold small mb-2">Attendees from this session:</h6>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for attendance in rc.live_class.attendances.all %}
+                                            {% if attendance.status != 'absent' %}
+                                                <span class="badge bg-secondary">{{ attendance.student.user.get_full_name|default:attendance.student.user.username }}</span>
+                                            {% endif %}
+                                        {% empty %}
+                                            <span class="text-muted small">No attendees recorded</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if rc.video %}
+                                <a href="{{ rc.video.url }}" target="_blank" class="btn btn-outline-primary rounded-pill btn-sm w-100">Watch Now</a>
+                                {% else %}
+                                <button class="btn btn-outline-secondary rounded-pill btn-sm w-100 disabled">No Video</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12"><p class="text-muted text-center py-5">No recorded classes available.</p></div>
+                    {% endfor %}
+                </div>
+                
+                <h2 class="fw-bold text-primary mt-5 mb-4">Class Summaries</h2>
+                <div class="row">
+                    {% for t in transcripts %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold text-dark">Summary: {{ t.title }}</h5>
+                                <p class="text-muted small mb-2">Generated: {{ t.start_time|date:"M d, Y" }}</p>
+                                <a href="{% url 'courses:view_class_transcript' t.id %}" target="_blank" class="btn btn-outline-primary rounded-pill btn-sm w-100 mt-3"><i class="bi bi-eye"></i> View Summary</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12"><p class="text-muted text-center py-5">No summaries available.</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- STUDY NOTES TAB -->
+            <div class="tab-pane fade" id="study-notes" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">Study Notes</h2>
+                <div class="row">
+                    {% for note in notes %}
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold text-dark">{{ note.title }}</h5>
+                                <p class="text-muted small mb-2">Course: {{ note.course.title }}</p>
+                                <p class="mb-3">{{ note.description|truncatewords:15 }}</p>
+                                <a href="{{ note.file.url }}" target="_blank" class="btn btn-primary rounded-pill btn-sm w-100"><i class="bi bi-download"></i> Download</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12"><p class="text-muted text-center py-5">No study notes available.</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- ATTENDANCE TAB -->
+            <div class="tab-pane fade" id="attendance" role="tabpanel">
+                {% include 'core/partials/attendance_analytics.html' %}
+                
+                <div class="card shadow-sm border-0 rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        {% if student_attendances %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle datatable w-100">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Live Class</th>
+                                        <th>Date</th>
+                                        <th>Joined</th>
+                                        <th>Exited</th>
+                                        <th>Late By</th>
+                                        <th>Missed</th>
+                                        <th>Attended</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for att in student_attendances %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                                    <i class="bi bi-camera-video text-primary"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0 fw-bold">{{ att.live_class.title }}</h6>
+                                                    <small class="text-muted">{{ att.live_class.course.title }}</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-muted">{{ att.live_class.start_time|date:"M d, Y"|default:"Not scheduled" }}</td>
+                                        <td class="text-muted">{{ att|format_joined_time }}</td>
+                                        <td class="text-muted">{{ att|format_exited_time }}</td>
+                                        <td class="text-danger">{{ att|late_by }}</td>
+                                        <td class="text-warning">{{ att|missed_time }}</td>
+                                        <td class="text-success fw-bold">{{ att|format_attended_duration }}</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                {% if att.status == 'present' %}
+                                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2"><i class="bi bi-check-circle me-1"></i> Present</span>
+                                                {% elif att.status == 'late' %}
+                                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-2"><i class="bi bi-clock-history me-1"></i> Late</span>
+                                                {% else %}
+                                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-2"><i class="bi bi-x-circle me-1"></i> Absent</span>
+                                                {% endif %}
+                                                <span class="text-muted small fw-bold">{{ att|attendance_percentage_val }}%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-calendar-x fs-1 d-block mb-3"></i>
+                            <h4>No Attendance Records</h4>
+                            <p class="mb-0">You haven't attended any classes yet.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- ASSIGNMENTS TAB -->
+            <div class="tab-pane fade" id="assignments" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">My Assignments</h2>
+                <div class="row mb-4">
+                    {% for assignment in assignments %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm border-0 rounded-4 h-100 border-start border-4 border-primary">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <h5 class="fw-bold text-dark">{{ assignment.title }}</h5>
+                                <p class="text-muted small mb-2">Course: {{ assignment.course.title }}</p>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <p class="text-danger small fw-bold mb-0"><i class="bi bi-clock-history"></i> Due: {{ assignment.due_date|date:"M d, Y h:i A" }}</p>
+                                    {% if not assignment_subs|get_item:assignment.id %}
+                                        {% if assignment.is_overdue %}
+                                            <span class="badge bg-danger rounded-pill">Overdue</span>
+                                        {% elif assignment.due_soon %}
+                                            <span class="badge bg-warning text-dark rounded-pill">Due Soon</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                <p class="mb-3 flex-grow-1">{{ assignment.description|truncatewords:15 }}</p>
+                                
+                                {% with sub=assignment_subs|get_item:assignment.id %}
+                                    {% if sub %}
+                                        <div class="alert alert-{% if sub.status == 'accepted' %}success{% elif sub.status == 'rejected' %}danger{% elif sub.status == 'resubmit' %}warning{% else %}info{% endif %} py-2 px-3 mb-0 rounded-3">
+                                            <strong>Status:</strong> {{ sub.get_status_display }}
+                                            {% if sub.teacher_comments %}
+                                            <hr class="my-2">
+                                            <p class="small mb-0"><strong>Teacher:</strong> {{ sub.teacher_comments }}</p>
+                                            {% endif %}
+                                        </div>
+                                        {% if sub.status == 'resubmit' or sub.status == 'rejected' %}
+                                            <button class="btn btn-outline-primary btn-sm rounded-pill mt-3 w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="assignment" data-id="{{ assignment.id }}" data-title="{{ assignment.title }}">Re-Submit Work</button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-primary btn-sm rounded-pill mt-auto w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="assignment" data-id="{{ assignment.id }}" data-title="{{ assignment.title }}">
+                                            <i class="bi bi-cloud-upload"></i> Upload Work
+                                        </button>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12"><p class="text-muted text-center">No pending assignments.</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- PROJECTS TAB -->
+            <div class="tab-pane fade" id="projects" role="tabpanel">
+                <h2 class="fw-bold text-success mb-4">My Projects</h2>
+                <div class="row">
+                    {% for project in projects %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm border-0 rounded-4 h-100 border-start border-4 border-success">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <h5 class="fw-bold text-dark">{{ project.title }}</h5>
+                                <p class="text-muted small mb-2">Course: {{ project.course.title }}</p>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <p class="text-danger small fw-bold mb-0"><i class="bi bi-clock-history"></i> Due: {{ project.due_date|date:"M d, Y h:i A" }}</p>
+                                    {% if not project_subs|get_item:project.id %}
+                                        {% if project.is_overdue %}
+                                            <span class="badge bg-danger rounded-pill">Overdue</span>
+                                        {% elif project.due_soon %}
+                                            <span class="badge bg-warning text-dark rounded-pill">Due Soon</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                                <p class="mb-3 flex-grow-1">{{ project.description|truncatewords:15 }}</p>
+                                
+                                {% with sub=project_subs|get_item:project.id %}
+                                    {% if sub %}
+                                        <div class="alert alert-{% if sub.status == 'accepted' %}success{% elif sub.status == 'rejected' %}danger{% elif sub.status == 'resubmit' %}warning{% else %}info{% endif %} py-2 px-3 mb-0 rounded-3">
+                                            <strong>Status:</strong> {{ sub.get_status_display }}
+                                            {% if sub.teacher_comments %}
+                                            <hr class="my-2">
+                                            <p class="small mb-0"><strong>Teacher:</strong> {{ sub.teacher_comments }}</p>
+                                            {% endif %}
+                                        </div>
+                                        {% if sub.status == 'resubmit' or sub.status == 'rejected' %}
+                                            <button class="btn btn-outline-success btn-sm rounded-pill mt-3 w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="project" data-id="{{ project.id }}" data-title="{{ project.title }}">Re-Submit Project</button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-success btn-sm rounded-pill mt-auto w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="project" data-id="{{ project.id }}" data-title="{{ project.title }}">
+                                            <i class="bi bi-cloud-upload"></i> Upload Project
+                                        </button>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12"><p class="text-muted text-center">No pending projects.</p></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- PAYMENTS TAB -->
+            <div class="tab-pane fade" id="payments" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">Payment History</h2>
+                <div class="card shadow-sm border-0 rounded-4">
+                    <div class="card-body p-0">
+                        {% if request.user.student_profile.enrollments.all %}
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0 datatable w-100">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="ps-4 py-3">Course Title</th>
+                                        <th class="py-3">Date of Enrollment</th>
+                                        <th class="py-3">Status</th>
+                                        <th class="pe-4 py-3 text-end">Amount Paid</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for enrollment in request.user.student_profile.enrollments.all %}
+                                    <tr>
+                                        <td class="ps-4 py-3 fw-bold">{{ enrollment.course.title }}</td>
+                                        <td class="py-3 text-muted">{{ enrollment.date_enrolled|date:"M d, Y" }}</td>
+                                        <td class="py-3"><span class="badge bg-success rounded-pill px-3 py-2">Paid / Success</span></td>
+                                        <td class="pe-4 py-3 text-end fw-bolder text-success">₹{{ enrollment.course.price }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="p-5 text-center text-muted">
+                            <i class="bi bi-receipt fs-1 d-block mb-3"></i>
+                            <h4>No Payment Records Found</h4>
+                            <p class="mb-0">You have not made any payments yet.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- Package Details Modal -->
+<div class="modal fade" id="packageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="bi bi-layers me-2"></i>Package Classes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 pt-2">
+                <p class="text-muted small mb-4">Here are all the individual classes for this package.</p>
+                <div class="list-group list-group-flush" id="package-classes-list">
+                    <!-- Javascript will populate this -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Submission Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow">
+            <form method="post" action="{% url 'courses:student_submit_work' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="item_type" id="modalItemType">
+                <input type="hidden" name="item_id" id="modalItemId">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary" id="modalTitle">Upload Submission</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select File (PDF, DOCX, ZIP, etc.)</label>
+                        <input type="file" name="file" class="form-control rounded-pill" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Submit Work</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const uploadModal = document.getElementById('uploadModal');
+    if (uploadModal) {
+        uploadModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const itemType = button.getAttribute('data-type');
+            const itemId = button.getAttribute('data-id');
+            const title = button.getAttribute('data-title');
+            
+            document.getElementById('modalItemType').value = itemType;
+            document.getElementById('modalItemId').value = itemId;
+            document.getElementById('modalTitle').textContent = `Submit Work for: ${title}`;
+        });
+    }
+</script>
+
+<!-- Cancel Booking Modal -->
+<div class="modal fade" id="cancelBookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold text-danger">Cancel Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to cancel your seat for <strong id="cancel-class-title"></strong>?</p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Reason for cancellation (Optional)</label>
+                    <textarea id="cancel-reason" class="form-control rounded-4" rows="3" placeholder="Why are you cancelling?"></textarea>
+                </div>
+                <input type="hidden" id="cancel-booking-id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Keep Booking</button>
+                <button type="button" class="btn btn-danger rounded-pill px-4 fw-bold" onclick="submitCancellation()">Confirm Cancellation</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+<script>
+    function openPackageModal(groupId) {
+        const dataEl = document.getElementById('pkg-data-' + groupId);
+        if (!dataEl) return;
+        
+        const classes = JSON.parse(dataEl.textContent);
+        const listEl = document.getElementById('package-classes-list');
+        listEl.innerHTML = '';
+        
+        let upcomingHtml = '';
+        let completedHtml = '';
+        let hasUpcoming = false;
+        let hasCompleted = false;
+
+        classes.forEach(c => {
+            let actionHtml = '';
+            if (c.is_ended) {
+                actionHtml = `<a href="${c.transcript_url}" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> Summary</a>`;
+            } else {
+                actionHtml = `<div class="join-container" data-start-time="${c.iso_start}" data-end-time="${c.iso_end}" data-join-url="${c.join_url}">
+                                <button class="btn btn-sm btn-primary rounded-pill px-4 disabled join-btn" style="min-width: 140px;">
+                                    <i class="bi bi-clock-history"></i> <span class="countdown-text">...</span>
+                                </button>
+                              </div>`;
+            }
+            
+            const itemHtml = `
+                <div class="list-group-item px-0 py-3 border-bottom-0 mb-2 rounded-3 bg-light" style="padding-left: 15px !important; padding-right: 15px !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1 ${c.is_ended ? 'text-muted' : ''}">${c.title}</h6>
+                            <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-1"></i>${c.date} <i class="bi bi-clock ms-2 me-1"></i>${c.time}</p>
+                        </div>
+                        <div>
+                            ${actionHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (c.is_ended) {
+                completedHtml += itemHtml;
+                hasCompleted = true;
+            } else {
+                upcomingHtml += itemHtml;
+                hasUpcoming = true;
+            }
+        });
+        
+        if (hasUpcoming) {
+            listEl.insertAdjacentHTML('beforeend', '<h6 class="text-primary mt-2 mb-3 fw-bold"><i class="bi bi-calendar-check me-2"></i>Upcoming Classes</h6>' + upcomingHtml);
+        }
+        if (hasCompleted) {
+            listEl.insertAdjacentHTML('beforeend', '<h6 class="text-secondary mt-4 mb-3 fw-bold"><i class="bi bi-check-circle-fill me-2"></i>Completed Classes</h6>' + completedHtml);
+        }
+        
+        // Re-initialize countdowns for the newly injected buttons
+        if (typeof initializeCountdowns === 'function') {
+            initializeCountdowns();
+        }
+        
+        var myModal = new bootstrap.Modal(document.getElementById('packageModal'));
+        myModal.show();
+    }
+</script>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function updateCountdowns() {
+        const containers = document.querySelectorAll('.join-container');
+        const now = new Date();
+        
+        containers.forEach(container => {
+            const startTimeStr = container.getAttribute('data-start-time');
+            const endTimeStr = container.getAttribute('data-end-time');
+            if(!startTimeStr) return;
+            
+            const startTime = new Date(startTimeStr);
+            const diffMs = startTime - now;
+            
+            const btn = container.querySelector('.join-btn');
+            const textSpan = container.querySelector('.countdown-text');
+            
+            if (endTimeStr && now > new Date(endTimeStr)) {
+                if (btn && !btn.hasAttribute('data-ended')) {
+                    container.innerHTML = `<button class="btn btn-secondary rounded-pill w-100 fw-bold disabled"><i class="bi bi-x-circle"></i> Class Ended</button>`;
+                    const newBtn = container.querySelector('button');
+                    if (newBtn) newBtn.setAttribute('data-ended', 'true');
+                }
+            } else if (diffMs <= 120000) { // 2 minutes or passed
+                if(btn && btn.classList.contains('disabled') && !btn.hasAttribute('data-ended')) {
+                    const joinUrl = container.getAttribute('data-join-url');
+                    container.innerHTML = `<a href="${joinUrl}" class="btn btn-success rounded-pill w-100 fw-bold"><i class="bi bi-play-fill"></i> Join Live Now</a>`;
+                }
+            } else {
+                if(textSpan) {
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const diffSecs = Math.floor((diffMs % (1000 * 60)) / 1000);
+                    
+                    let timeStr = "";
+                    if (diffDays > 0) timeStr += diffDays + "d ";
+                    if (diffHours > 0) timeStr += diffHours + "h ";
+                    timeStr += diffMins + "m " + diffSecs + "s";
+                    
+                    textSpan.textContent = "Starts in: " + timeStr;
+                }
+            }
+        });
+    }
+    setInterval(updateCountdowns, 1000);
+    updateCountdowns();
+</script>
+<!-- Booking Mode Modal -->
+<div class="modal fade" id="bookingModeModal" tabindex="-1" aria-labelledby="bookingModeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header bg-primary text-white border-0 rounded-top-4">
+        <h5 class="modal-title fw-bold" id="bookingModeModalLabel"><i class="bi bi-calendar-check me-2"></i>Choose Booking Mode</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="text-muted mb-4">How would you like to book these slots?</p>
+        
+        <div class="d-grid gap-3">
+            <button class="btn btn-outline-primary text-start p-3 rounded-3" onclick="checkRecurring()">
+                <div class="fw-bold mb-1"><i class="bi bi-arrow-repeat me-2"></i>Continue with these days (Recurring)</div>
+                <div class="small text-muted">Book these same weekdays every week until the total course duration is completed.</div>
+            </button>
+            <button class="btn btn-outline-secondary text-start p-3 rounded-3" onclick="setupSingleBooking()">
+                <div class="fw-bold mb-1"><i class="bi bi-calendar-day me-2"></i>Only these specific days (Single)</div>
+                <div class="small text-muted">Book only the exact slots you just selected on the calendar.</div>
+            </button>
+        </div>
+
+        <div id="recurring-check-result" class="d-none mt-4 p-3 bg-light rounded-3 border">
+            <h6 class="fw-bold text-dark mb-2">Availability Check</h6>
+            <p id="recurring-msg" class="small mb-3"></p>
+            
+            <div id="additional-slots-container" class="d-none mb-3">
+                <h6 class="fw-bold small text-muted mb-2">Select missing slots manually to fulfill the course duration:</h6>
+                <div id="additional-slots-list" class="list-group" style="max-height: 200px; overflow-y: auto; font-size: 0.9rem;">
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <span class="text-muted small">Total to Pay:</span>
+                <span class="fw-bold fs-5 text-success" id="recurring-price">₹0</span>
+            </div>
+            <div id="recurring-actions" class="mt-3 text-end d-none">
+                <button class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-success btn-sm" onclick="submitBooking('recurring')">Confirm & Pay</button>
+            </div>
+        </div>
+
+        <div id="single-check-result" class="d-none mt-4 p-3 bg-light rounded-3 border">
+            <h6 class="fw-bold text-dark mb-2">Single Booking Summary</h6>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                <span class="text-muted small">Total to Pay:</span>
+                <span class="fw-bold fs-5 text-success" id="single-price">₹0</span>
+            </div>
+            <div class="mt-3 text-end">
+                <button class="btn btn-success btn-sm" onclick="submitBooking('single')">Confirm & Pay</button>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<form id="enroll-form" method="post" action="" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="selected_slots" id="input-selected-slots">
+    <input type="hidden" name="additional_slots" id="input-additional-slots">
+    <input type="hidden" name="booking_mode" id="input-booking-mode">
+</form>
+
+<script>
+    const courseMetadata = {{ course_metadata_json|default:"{}"|safe }};
+    let selectedSlotIds = [];
+    let selectedDates = [];
+    let additionalSlotIds = [];
+    let currentShortfallCount = 0;
+    let baseRecurringFoundSlots = 0;
+    let selectedCourseId = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('student-live-calendar');
+        if (calendarEl) {
+            var calendarEvents = [
+                {% for class in live_classes %}
+                    {% if not class.has_ended %}
+                    {
+                        id: '{{ class.id }}',
+                        title: '{% if class.has_booked %}✅ Booked: {% endif %}{{ class.title|escapejs }}',
+                        start: '{{ class.start_time.isoformat }}',
+                        end: '{{ class.end_time.isoformat }}',
+                        extendedProps: {
+                            has_booked: {{ class.has_booked|yesno:"true,false" }},
+                            fully_booked: {{ class.booked_count }} >= {{ class.max_capacity }},
+                            course_title: '{{ class.course.title|escapejs }}',
+                            course_id: '{{ class.course.id }}',
+                            class_type: '{{ class.class_type }}'
+                        },
+                        color: '{% if class.has_booked %}#6c757d{% elif class.class_type == "public" %}#8a2be2{% else %}#0d6efd{% endif %}'
+                    },
+                    {% endif %}
+                {% endfor %}
+            ];
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'timeGridWeek',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: function(info, successCallback, failureCallback) {
+                    if (!selectedCourseId) {
+                        successCallback([]);
+                    } else {
+                        var filteredEvents = calendarEvents.filter(function(event) {
+                            return event.extendedProps.course_id === selectedCourseId;
+                        });
+                        successCallback(filteredEvents);
+                    }
+                },
+                eventClick: function(info) {
+                    if (!selectedCourseId) {
+                        alert('Please select a course from the filter first.');
+                        return;
+                    }
+
+                    if (info.event.extendedProps.has_booked) {
+                        alert('You have already booked this seat!');
+                        return;
+                    } 
+                    if (info.event.extendedProps.fully_booked) {
+                        alert('This class is fully booked!');
+                        return;
+                    }
+                    
+                    let eventId = info.event.id;
+                    let eventDateStr = info.event.startStr.split('T')[0];
+                    let index = selectedSlotIds.indexOf(eventId);
+                    
+                    if (index > -1) {
+                        // Deselect
+                        selectedSlotIds.splice(index, 1);
+                        selectedDates.splice(index, 1);
+                        info.el.style.border = "none";
+                        info.el.style.opacity = "1";
+                    } else {
+                        // Select
+                        selectedSlotIds.push(eventId);
+                        selectedDates.push(eventDateStr);
+                        info.el.style.border = "3px solid #6f42c1";
+                        info.el.style.opacity = "0.7";
+                    }
+                    updateProceedUI();
+                }
+            });
+            calendar.render();
+
+            document.getElementById('course-filter').addEventListener('change', function(e) {
+                selectedCourseId = e.target.value;
+                selectedSlotIds = [];
+                selectedDates = [];
+                updateProceedUI();
+                
+                // Update form action URL dynamically
+                let form = document.getElementById('enroll-form');
+                if (selectedCourseId) {
+                    form.action = "/courses/" + selectedCourseId + "/enroll/";
+                }
+                
+                calendar.refetchEvents();
+            });
+
+        var triggerTabList = [].slice.call(document.querySelectorAll('#studentTabs a[data-bs-toggle="list"]'));
+        triggerTabList.forEach(function (triggerEl) {
+            triggerEl.addEventListener('shown.bs.tab', function (event) {
+                if(event.target.getAttribute('href') === '#live-classes' && typeof calendar !== 'undefined') {
+                    calendar.render();
+                }
+                localStorage.setItem('studentTab', event.target.getAttribute('href'));
+            })
+        });
+
+        var activeTab = localStorage.getItem('studentTab');
+        if (activeTab) {
+            var tabToActivate = document.querySelector('#studentTabs a[href="' + activeTab + '"]');
+            if(tabToActivate) {
+                var tab = new bootstrap.Tab(tabToActivate);
+                tab.show();
+            }
+        }
+    });
+
+    function updateProceedUI() {
+        let btnContainer = document.getElementById('enrollment-actions');
+        let selectedCountEl = document.getElementById('selected-count');
+        
+        if (selectedSlotIds.length > 0) {
+            btnContainer.classList.remove('d-none');
+            if (selectedCountEl) selectedCountEl.innerText = selectedSlotIds.length;
+        } else {
+            btnContainer.classList.add('d-none');
+        }
+    }
+
+    let bookingModalInstance;
+    function openBookingModal() {
+        if(!bookingModalInstance) {
+            bookingModalInstance = new bootstrap.Modal(document.getElementById('bookingModeModal'));
+        }
+        document.getElementById('recurring-check-result').classList.add('d-none');
+        document.getElementById('single-check-result').classList.add('d-none');
+        document.getElementById('additional-slots-container').classList.add('d-none');
+        additionalSlotIds = [];
+        bookingModalInstance.show();
+    }
+
+    function setupSingleBooking() {
+        if(!selectedCourseId) return;
+        document.getElementById('recurring-check-result').classList.add('d-none');
+        const hourlyRate = courseMetadata[selectedCourseId] ? courseMetadata[selectedCourseId].calculated_hourly_rate : 0;
+        const price = selectedSlotIds.length * hourlyRate;
+        document.getElementById('single-price').innerText = "₹" + price.toFixed(2);
+        document.getElementById('single-check-result').classList.remove('d-none');
+    }
+
+    function checkRecurring() {
+        if(!selectedCourseId) return;
+        document.getElementById('single-check-result').classList.add('d-none');
+        document.getElementById('recurring-check-result').classList.remove('d-none');
+        document.getElementById('additional-slots-container').classList.add('d-none');
+        document.getElementById('recurring-msg').innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Checking future availability...';
+        document.getElementById('recurring-actions').classList.add('d-none');
+        document.getElementById('recurring-price').innerText = "₹...";
+        additionalSlotIds = [];
+
+        fetch("{% url 'courses:api_check_recurring_slots' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ slot_ids: selectedSlotIds })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.error) {
+                document.getElementById('recurring-msg').innerHTML = '<span class="text-danger">' + data.error + '</span>';
+                return;
+            }
+            
+            baseRecurringFoundSlots = data.found_slots;
+            updateRecurringPrice();
+            document.getElementById('recurring-actions').classList.remove('d-none');
+
+            if(data.status === 'success') {
+                document.getElementById('recurring-msg').innerHTML = '<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Sufficient future slots available!</span>';
+            } else if(data.status === 'shortfall') {
+                document.getElementById('recurring-msg').innerHTML = '<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>Slots Not Fully Available</span><br>The teacher has only scheduled enough slots for <b>' + data.found_slots + '</b> hours, but the course requires <b>' + data.required_slots + '</b> hours. You can continue booking the currently available ' + data.found_slots + ' hours, or cancel and wait for the teacher to add more slots.';
+                
+                if (data.other_available_slots && data.other_available_slots.length > 0) {
+                    currentShortfallCount = data.required_slots - data.found_slots;
+                    document.getElementById('additional-slots-container').classList.remove('d-none');
+                    let listHtml = '';
+                    data.other_available_slots.forEach(slot => {
+                        listHtml += `<label class="list-group-item d-flex gap-2 align-items-center">
+                                <input class="form-check-input flex-shrink-0 additional-slot-chk" type="checkbox" value="${slot.id}" onchange="handleAdditionalSlot(this)">
+                                <span><strong>${slot.date}</strong> at ${slot.time}</span>
+                            </label>`;
+                    });
+                    document.getElementById('additional-slots-list').innerHTML = listHtml;
+                }
+            }
+        })
+        .catch(err => {
+            document.getElementById('recurring-msg').innerText = "Error checking availability.";
+        });
+    }
+
+    function handleAdditionalSlot(checkbox) {
+        if(checkbox.checked) {
+            if(additionalSlotIds.length >= currentShortfallCount) {
+                alert("You only need " + currentShortfallCount + " more slots to fulfill the course duration.");
+                checkbox.checked = false;
+                return;
+            }
+            additionalSlotIds.push(checkbox.value);
+        } else {
+            let index = additionalSlotIds.indexOf(checkbox.value);
+            if(index > -1) {
+                additionalSlotIds.splice(index, 1);
+            }
+        }
+        updateRecurringPrice();
+    }
+
+    function updateRecurringPrice() {
+        if(!selectedCourseId) return;
+        const hourlyRate = courseMetadata[selectedCourseId] ? courseMetadata[selectedCourseId].calculated_hourly_rate : 0;
+        const totalSlots = baseRecurringFoundSlots + additionalSlotIds.length;
+        const price = totalSlots * hourlyRate;
+        document.getElementById('recurring-price').innerText = "₹" + price.toFixed(2);
+    }
+
+    function submitBooking(mode) {
+        document.getElementById('input-selected-slots').value = JSON.stringify(selectedSlotIds);
+        document.getElementById('input-additional-slots').value = JSON.stringify(additionalSlotIds);
+        document.getElementById('input-booking-mode').value = mode;
+        document.getElementById('enroll-form').submit();
+    }
+</script>
+
+<script>
+    let cancelModal;
+    document.addEventListener("DOMContentLoaded", function() {
+        let cancelModalEl = document.getElementById('cancelBookingModal');
+        if (cancelModalEl) {
+            cancelModal = new bootstrap.Modal(cancelModalEl);
+        }
+    });
+
+    function showCancelModal(bookingId, classTitle) {
+        document.getElementById('cancel-class-title').textContent = classTitle;
+        document.getElementById('cancel-booking-id').value = bookingId;
+        document.getElementById('cancel-reason').value = '';
+        cancelModal.show();
+    }
+
+    function submitCancellation() {
+        const bookingId = document.getElementById('cancel-booking-id').value;
+        const reason = document.getElementById('cancel-reason').value;
+        
+        fetch("{% url 'courses:api_cancel_booking' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                'booking_id': bookingId,
+                'reason': reason
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                cancelModal.hide();
+                window.location.reload();
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            alert("Error cancelling booking.");
+        });
+    }
+
+    // Preserve active tab across page loads and handle attendance filter
+    document.addEventListener("DOMContentLoaded", function() {
+        let urlParams = new URLSearchParams(window.location.search);
+        let hash = window.location.hash;
+        
+        // If we filtered attendance, default to the attendance tab
+        if (urlParams.has('start_date') || urlParams.has('end_date')) {
+            hash = '#attendance';
+        }
+        
+        if (hash) {
+            let triggerEl = document.querySelector('a[href="' + hash + '"]');
+            if (triggerEl) {
+                let tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            }
+        }
+        
+        // Update URL hash when a tab is clicked
+        let tabEls = document.querySelectorAll('a[data-bs-toggle="list"]');
+        tabEls.forEach(function(el) {
+            el.addEventListener('shown.bs.tab', function (event) {
+                let targetHash = event.target.getAttribute('href');
+                if(history.pushState) {
+                    history.pushState(null, null, window.location.pathname + window.location.search + targetHash);
+                } else {
+                    window.location.hash = targetHash;
+                }
+            });
+        });
+
+        // Subject filter for Booked Sessions
+        let filterSelect = document.getElementById('booked-sessions-filter');
+        if (filterSelect) {
+            filterSelect.addEventListener('change', function() {
+                let courseId = this.value;
+                let cards = document.querySelectorAll('.booked-session-card');
+                
+                cards.forEach(card => {
+                    if (courseId === 'all' || card.getAttribute('data-course-id') === courseId) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+    });
+</script>
+
+<script>
+    function openPackageModal(groupId) {
+        const dataEl = document.getElementById('pkg-data-' + groupId);
+        if (!dataEl) return;
+        
+        const classes = JSON.parse(dataEl.textContent);
+        const listEl = document.getElementById('package-classes-list');
+        listEl.innerHTML = '';
+        
+        classes.forEach(c => {
+            let actionHtml = '';
+            if (c.is_ended) {
+                actionHtml = `<a href="${c.transcript_url}" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> Summary</a>`;
+            } else {
+                actionHtml = `<div class="join-container" data-start-time="${c.iso_start}" data-end-time="${c.iso_end}" data-join-url="${c.join_url}">
+                                <button class="btn btn-sm btn-primary rounded-pill px-4 disabled join-btn" style="min-width: 140px;">
+                                    <i class="bi bi-clock-history"></i> <span class="countdown-text">...</span>
+                                </button>
+                              </div>`;
+            }
+            
+            const html = `
+                <div class="list-group-item px-0 py-3 border-bottom-0 mb-2 rounded-3 bg-light" style="padding-left: 15px !important; padding-right: 15px !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1">${c.title}</h6>
+                            <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-1"></i>${c.date} <i class="bi bi-clock ms-2 me-1"></i>${c.time}</p>
+                        </div>
+                        <div>
+                            ${actionHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            listEl.insertAdjacentHTML('beforeend', html);
+        });
+        
+        // Re-initialize countdowns for the newly injected buttons
+        if (typeof initializeCountdowns === 'function') {
+            initializeCountdowns();
+        }
+        
+        var myModal = new bootstrap.Modal(document.getElementById('packageModal'));
+        myModal.show();
+    }
+</script>
+
+<!-- Upload Modal for Assignments/Projects -->
+<div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom-0">
+                <h5 class="modal-title fw-bold" id="uploadModalLabel">Upload Work</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'courses:student_submit_work' %}" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body py-0">
+                    <p class="text-muted small mb-4" id="uploadModalDesc">Select a file to upload for your assignment/project.</p>
+                    <input type="hidden" name="item_type" id="uploadItemType" value="">
+                    <input type="hidden" name="item_id" id="uploadItemId" value="">
+                    <div class="mb-3">
+                        <label for="uploadNotes" class="form-label fw-bold">Description (Optional)</label>
+                        <textarea class="form-control" id="uploadNotes" name="student_notes" rows="3" placeholder="Add any notes or description about your submission..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="uploadFile" class="form-label fw-bold">Select File</label>
+                        <input class="form-control form-control-lg" type="file" id="uploadFile" name="file" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Upload Now</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var uploadModal = document.getElementById('uploadModal')
+    if (uploadModal) {
+        uploadModal.addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget
+            var type = button.getAttribute('data-type')
+            var id = button.getAttribute('data-id')
+            var title = button.getAttribute('data-title')
+            
+            var modalTitle = uploadModal.querySelector('.modal-title')
+            var modalDesc = uploadModal.querySelector('#uploadModalDesc')
+            var inputType = uploadModal.querySelector('#uploadItemType')
+            var inputId = uploadModal.querySelector('#uploadItemId')
+            
+            modalTitle.textContent = 'Submit ' + (type === 'assignment' ? 'Assignment' : 'Project')
+            modalDesc.textContent = 'Select a file to submit for "' + title + '".'
+            inputType.value = type
+            inputId.value = id
+        })
+    }
+})
+</script>
+
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Submissions for {{ item.title }} - Tution4All{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 mb-3 d-flex justify-content-between align-items-center">
+        <h2 class="fw-bold text-primary m-0"><i class="bi bi-inboxes-fill me-2"></i> Submissions for {{ item.title }}</h2>
+        <a href="{% url 'courses:teacher_manage_course' item.course.id %}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-arrow-left"></i> Back to Course</a>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm border-0 rounded-4 p-4">
+            <h5 class="fw-bold mb-4">Student Submissions</h5>
+            
+            <div class="table-responsive">
+                <table class="table table-hover align-middle datatable w-100">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Student</th>
+                            <th>Submitted At</th>
+                            <th>Status</th>
+                            <th>File</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in submissions %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if sub.student.photo %}
+                                        <img src="{{ sub.student.photo.url }}" class="rounded-circle me-3" width="40" height="40" style="object-fit: cover;">
+                                    {% else %}
+                                        <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 40px; height: 40px;">
+                                            {{ sub.student.user.username|make_list|first|upper }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <h6 class="mb-0 fw-bold">{{ sub.student.user.get_full_name|default:sub.student.user.username }}</h6>
+                                        <small class="text-muted">ID: {{ sub.student.student_id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ sub.submitted_at|date:"M d, Y h:i A" }}</td>
+                            <td>
+                                <span class="badge rounded-pill px-3 py-2 
+                                    {% if sub.status == 'accepted' %}bg-success
+                                    {% elif sub.status == 'rejected' %}bg-danger
+                                    {% elif sub.status == 'resubmit' %}bg-warning text-dark
+                                    {% else %}bg-info text-dark{% endif %}">
+                                    {{ sub.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if sub.file %}
+                                <a href="{{ sub.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-download"></i> View</a>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <button class="btn btn-primary btn-sm rounded-pill" data-bs-toggle="modal" data-bs-target="#gradeModal{{ sub.id }}">Grade / Review</button>
+                            </td>
+                        </tr>
+
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals outside the table -->
+{% for sub in submissions %}
+<div class="modal fade" id="gradeModal{{ sub.id }}" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <form method="post" action="{% url 'courses:teacher_grade_submission' sub.id %}">
+                {% csrf_token %}
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-primary">Review Submission</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Student</label>
+                        <input type="text" class="form-control rounded-pill bg-light" value="{{ sub.student.user.get_full_name|default:sub.student.user.username }}" readonly>
+                    </div>
+                    {% if sub.student_notes %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Student's Description / Notes</label>
+                        <div class="p-3 bg-light rounded-3 small text-muted border">
+                            {{ sub.student_notes|linebreaksbr }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Status</label>
+                        <select name="status" class="form-select rounded-pill" required>
+                            <option value="submitted" {% if sub.status == 'submitted' %}selected{% endif %}>Under Review</option>
+                            <option value="accepted" {% if sub.status == 'accepted' %}selected{% endif %}>Accepted</option>
+                            <option value="rejected" {% if sub.status == 'rejected' %}selected{% endif %}>Rejected</option>
+                            <option value="resubmit" {% if sub.status == 'resubmit' %}selected{% endif %}>Needs Resubmission</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Comments / Feedback</label>
+                        <textarea name="comments" class="form-control rounded-4" rows="4">{{ sub.teacher_comments|default:'' }}</textarea>
+                        <div class="form-text">If asking for a resubmission, detail what needs to be fixed.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 pb-4 px-4">
+                    <button type="button" class="btn btn-light rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Grade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

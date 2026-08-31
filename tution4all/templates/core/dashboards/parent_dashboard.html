@@ -1,0 +1,551 @@
+{% extends 'base.html' %}
+{% load dict_extras %}
+
+{% block title %}Parent Dashboard - Tution4All{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <!-- Sidebar Profile -->
+        <div class="card shadow-sm border-0 rounded-4 text-center p-4">
+            <div class="mb-3">
+                {% if request.user.photo %}
+                    <img src="{{ request.user.photo.url }}" class="rounded-circle img-thumbnail" style="width: 120px; height: 120px; object-fit: cover;">
+                {% else %}
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 120px; height: 120px;">
+                        <i class="bi bi-person-fill text-secondary fs-1"></i>
+                    </div>
+                {% endif %}
+            </div>
+            <h5 class="fw-bold mb-1">{{ request.user.get_full_name|default:request.user.username }}</h5>
+            <p class="text-muted mb-3"><i class="bi bi-heart-fill text-danger me-1"></i> Parent</p>
+            <hr>
+            <div class="text-start">
+                <p class="mb-2"><i class="bi bi-envelope-fill text-primary me-2"></i> {{ request.user.email }}</p>
+                <p class="mb-0"><i class="bi bi-telephone-fill text-primary me-2"></i> {{ request.user.phone_number|default:"Not Provided" }}</p>
+            </div>
+            <div class="list-group shadow-sm border-0 mt-4" id="parentTabs" role="tablist">
+                <a href="#overview" class="list-group-item list-group-item-action active fw-bold border-0" data-bs-toggle="list" role="tab"><i class="bi bi-grid-1x2-fill me-2"></i> Overview</a>
+                <a href="#academics" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-book-half me-2"></i> Academics</a>
+                <a href="{% url 'courses:parent_schedule_view' %}" class="list-group-item list-group-item-action fw-bold border-0 text-primary"><i class="bi bi-calendar3 me-2"></i> Children's Schedule</a>
+                <a href="#attendance" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-calendar-check-fill me-2"></i> Attendance</a>
+                <a href="#payments" class="list-group-item list-group-item-action border-0" data-bs-toggle="list" role="tab"><i class="bi bi-credit-card-fill me-2"></i> Payment History</a>
+                <a href="{% url 'chat:index' %}" class="list-group-item list-group-item-action fw-bold border-0 text-success bg-light"><i class="bi bi-whatsapp me-2"></i> Open Web Chat</a>
+                <a href="{% url 'core:complaints' %}" class="list-group-item list-group-item-action fw-bold border-0 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Complaints</a>
+                <a href="#" class="list-group-item list-group-item-action border-0"><i class="bi bi-person-gear me-2"></i> Edit Profile</a>
+                <div class="mt-4 pt-3 border-top text-center">
+                    <a href="{% url 'core:parent_analysis_redirect' %}" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm w-100">
+                        <i class="bi bi-graph-up-arrow me-2"></i> Deep Student Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="tab-content" id="nav-tabContent">
+            
+            <!-- OVERVIEW TAB -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4 brand-font">Parent Dashboard</h2>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-people position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75 brand-font">Linked Students</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">{{ children.count }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold text-primary mb-3"><i class="bi bi-link-45deg"></i> Link a Student</h5>
+                                <form method="post" action="{% url 'core:dashboard' %}" class="d-flex gap-2">
+                                    {% csrf_token %}
+                                    <input type="text" name="student_id" class="form-control rounded-pill" placeholder="Enter Student ID (e.g. STU-A1B2C3)" required>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4 text-nowrap">Link</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 class="fw-bold mt-4 mb-3">My Children's Progress</h4>
+                
+                {% if children %}
+                    {% for child in children %}
+                    <div class="card shadow-sm border-0 rounded-4 mb-4">
+                        <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                            <h5 class="fw-bold text-success mb-0"><i class="bi bi-person-badge me-2"></i>{{ child.user.get_full_name|default:child.user.username }}</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <h6 class="fw-bold text-muted mb-3">Enrolled Courses</h6>
+                            <div class="row">
+                                {% for enrollment in child.enrollments.all %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card border-0 bg-light rounded-4">
+                                        <div class="card-body">
+                                            <h6 class="fw-bold text-primary mb-1">{{ enrollment.course.title }}</h6>
+                                            <p class="small text-muted mb-2">Taught by: {{ enrollment.course.teacher.user.get_full_name }}</p>
+                                            <a href="{% url 'courses:detail' enrollment.course.id %}" class="btn btn-sm btn-outline-primary rounded-pill">View Course Details</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <div class="col-12 text-muted">
+                                    <p class="mb-0 small"><i class="bi bi-info-circle me-1"></i> Not enrolled in any courses yet.</p>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-5 text-center text-muted">
+                            <i class="bi bi-people fs-1 d-block mb-3"></i>
+                            <p class="mb-0">You haven't linked any students to your account yet.</p>
+                            <p class="small mt-2">Ask your child to check their Student Dashboard for their unique <strong>Student ID</strong>.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- ACADEMICS TAB -->
+            <div class="tab-pane fade" id="academics" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">Academic Progress</h2>
+                {% if children %}
+                    {% for child in children %}
+                        <div class="card shadow-sm border-0 rounded-4 mb-4">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                                <h5 class="fw-bold text-success mb-0"><i class="bi bi-person-badge me-2"></i>{{ child.user.get_full_name|default:child.user.username }}</h5>
+                            </div>
+                            <div class="card-body p-4">
+                                {% for enrollment in child.enrollments.all %}
+                                <div class="mb-4 border rounded p-3 bg-light">
+                                    <h6 class="fw-bold text-primary mb-3">{{ enrollment.course.title }} <small class="text-muted fw-normal">(Taught by {{ enrollment.course.teacher.user.get_full_name }})</small></h6>
+                                    
+                                    <div class="accordion" id="accordionCourse{{ enrollment.id }}">
+                                        
+                                        <!-- Recorded Classes -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingRec{{ enrollment.id }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRec{{ enrollment.id }}">
+                                                    <i class="bi bi-play-circle-fill text-primary me-2"></i> Recorded Classes
+                                                </button>
+                                            </h2>
+                                            <div id="collapseRec{{ enrollment.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionCourse{{ enrollment.id }}">
+                                                <div class="accordion-body p-0">
+                                                    <ul class="list-group list-group-flush">
+                                                        {% load dict_extras %}
+                                                        {% with rcs=child.filtered_recorded_classes|get_item:enrollment.course.id %}
+                                                            {% for rc in rcs %}
+                                                            <li class="list-group-item">
+                                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                    <div>
+                                                                        <span class="fw-bold">{{ rc.title }}</span><br>
+                                                                        <small class="text-muted">{{ rc.uploaded_at|date:"M d, Y" }}</small>
+                                                                    </div>
+                                                                    {% if rc.video %}
+                                                                    <a href="{{ rc.video.url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-play-circle"></i> Watch</a>
+                                                                    {% endif %}
+                                                                </div>
+                                                                {% if rc.live_class %}
+                                                                <div class="p-2 bg-light rounded small">
+                                                                    <span class="fw-bold">Attendees:</span>
+                                                                    {% for attendance in rc.live_class.attendances.all %}
+                                                                        {% if attendance.status != 'absent' %}
+                                                                            <span class="badge bg-secondary">{{ attendance.student.user.get_full_name|default:attendance.student.user.username }}</span>
+                                                                        {% endif %}
+                                                                    {% empty %}
+                                                                        <span class="text-muted">No attendees recorded</span>
+                                                                    {% endfor %}
+                                                                </div>
+                                                                {% endif %}
+                                                            </li>
+                                                            {% empty %}
+                                                            <li class="list-group-item text-muted text-center">No recorded classes available.</li>
+                                                            {% endfor %}
+                                                        {% endwith %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Transcripts -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingTranscripts{{ enrollment.id }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTranscripts{{ enrollment.id }}">
+                                                    <i class="bi bi-file-text-fill text-primary me-2"></i> Class Transcripts
+                                                </button>
+                                            </h2>
+                                            <div id="collapseTranscripts{{ enrollment.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionCourse{{ enrollment.id }}">
+                                                <div class="accordion-body p-0">
+                                                    <ul class="list-group list-group-flush">
+                                                        {% with ts=child.filtered_transcripts|get_item:enrollment.course.id %}
+                                                            {% for t in ts %}
+                                                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                                <div>
+                                                                    <span class="fw-bold">Transcript: {{ t.title }}</span><br>
+                                                                    <small class="text-muted">{{ t.start_time|date:"M d, Y" }}</small>
+                                                                </div>
+                                                                <a href="{% url 'courses:view_class_transcript' t.id %}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-eye"></i> View</a>
+                                                            </li>
+                                                            {% empty %}
+                                                            <li class="list-group-item text-muted text-center">No transcripts available.</li>
+                                                            {% endfor %}
+                                                        {% endwith %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Notes -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingNotes{{ enrollment.id }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNotes{{ enrollment.id }}">
+                                                    <i class="bi bi-file-earmark-text-fill text-info me-2"></i> Study Notes ({{ enrollment.course.notes.count }})
+                                                </button>
+                                            </h2>
+                                            <div id="collapseNotes{{ enrollment.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionCourse{{ enrollment.id }}">
+                                                <div class="accordion-body p-0">
+                                                    <ul class="list-group list-group-flush">
+                                                        {% for note in enrollment.course.notes.all %}
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <i class="bi bi-file-pdf me-2 text-danger"></i> <span class="fw-bold">{{ note.title }}</span>
+                                                            </div>
+                                                            {% if note.file %}
+                                                            <a href="{{ note.file.url }}" target="_blank" class="btn btn-sm btn-primary rounded-pill"><i class="bi bi-download"></i> Download</a>
+                                                            {% endif %}
+                                                        </li>
+                                                        {% empty %}
+                                                        <li class="list-group-item text-muted">No study notes provided.</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Assignments -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingAss{{ enrollment.id }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAss{{ enrollment.id }}">
+                                                    <i class="bi bi-journal-check text-warning me-2"></i> Assignments ({{ enrollment.course.assignments.count }})
+                                                </button>
+                                            </h2>
+                                            <div id="collapseAss{{ enrollment.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionCourse{{ enrollment.id }}">
+                                                <div class="accordion-body p-0">
+                                                    <ul class="list-group list-group-flush">
+                                                        {% for assignment in enrollment.course.assignments.all %}
+                                                        {% with sub=child.assignment_subs|get_item:assignment.id %}
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <span class="fw-bold">{{ assignment.title }}</span><br>
+                                                                <small class="text-danger">Due: {{ assignment.due_date|date:"M d, Y h:i A" }}</small>
+                                                            </div>
+                                                            <div class="text-end">
+                                                            {% if assignment.file %}
+                                                                <a href="{{ assignment.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill me-2"><i class="bi bi-download"></i> File</a>
+                                                            {% endif %}
+                                                            {% if sub %}
+                                                                {% if sub.status == 'accepted' %}
+                                                                <span class="badge bg-success">Graded / Accepted</span>
+                                                                {% elif sub.status == 'rejected' %}
+                                                                <span class="badge bg-danger">Rejected</span>
+                                                                {% else %}
+                                                                <span class="badge bg-info text-dark">Submitted</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Pending</span>
+                                                            {% endif %}
+                                                            </div>
+                                                        </li>
+                                                        {% endwith %}
+                                                        {% empty %}
+                                                        <li class="list-group-item text-muted">No assignments.</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Projects -->
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="headingProj{{ enrollment.id }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProj{{ enrollment.id }}">
+                                                    <i class="bi bi-kanban text-success me-2"></i> Projects ({{ enrollment.course.projects.count }})
+                                                </button>
+                                            </h2>
+                                            <div id="collapseProj{{ enrollment.id }}" class="accordion-collapse collapse" data-bs-parent="#accordionCourse{{ enrollment.id }}">
+                                                <div class="accordion-body p-0">
+                                                    <ul class="list-group list-group-flush">
+                                                        {% for project in enrollment.course.projects.all %}
+                                                        {% with sub=child.project_subs|get_item:project.id %}
+                                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                                            <div>
+                                                                <span class="fw-bold">{{ project.title }}</span><br>
+                                                                <small class="text-danger">Due: {{ project.due_date|date:"M d, Y h:i A" }}</small>
+                                                            </div>
+                                                            <div class="text-end">
+                                                            {% if project.file %}
+                                                                <a href="{{ project.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill me-2"><i class="bi bi-download"></i> File</a>
+                                                            {% endif %}
+                                                            {% if sub %}
+                                                                {% if sub.status == 'accepted' %}
+                                                                <span class="badge bg-success">Graded / Accepted</span>
+                                                                {% elif sub.status == 'rejected' %}
+                                                                <span class="badge bg-danger">Rejected</span>
+                                                                {% else %}
+                                                                <span class="badge bg-info text-dark">Submitted</span>
+                                                                {% endif %}
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Pending</span>
+                                                            {% endif %}
+                                                            </div>
+                                                        </li>
+                                                        {% endwith %}
+                                                        {% empty %}
+                                                        <li class="list-group-item text-muted">No projects.</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div> <!-- end accordion -->
+                                </div>
+                                {% empty %}
+                                <div class="text-muted"><i class="bi bi-info-circle me-1"></i> Not enrolled in any courses.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-5 text-center text-muted">
+                            <i class="bi bi-people fs-1 d-block mb-3"></i>
+                            <p class="mb-0">You haven't linked any students to your account yet.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- ATTENDANCE TAB -->
+            <div class="tab-pane fade" id="attendance" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">Children's Attendance</h2>
+                {% if children %}
+                    {% for child in children %}
+                        <div class="card shadow-sm border-0 rounded-4 mb-4">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                                <h5 class="fw-bold text-success mb-0 d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-person-badge me-2"></i>{{ child.user.get_full_name|default:child.user.username }}</span>
+                                    <span class="badge bg-primary rounded-pill ms-2">Overall Attendance: {{ child.overall_attendance_percentage }}%</span>
+                                </h5>
+                            </div>
+                            <div class="card-body p-4">
+                                {% if child.attendances.all %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0 datatable w-100">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-4 py-3">Course / Live Class</th>
+                                                <th class="py-3">Date</th>
+                                                <th class="py-3">Joined</th>
+                                                <th class="py-3">Exited</th>
+                                                <th class="py-3">Late By</th>
+                                                <th class="py-3">Missed</th>
+                                                <th class="py-3">Attended</th>
+                                                <th class="py-3">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for attendance in child.attendances.all %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-primary bg-opacity-10 p-2 rounded me-3">
+                                                            <i class="bi bi-camera-video text-primary"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h6 class="mb-0 fw-bold">{{ attendance.live_class.title }}</h6>
+                                                            <small class="text-muted">{{ attendance.live_class.course.title }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="py-3 text-muted">{{ attendance.live_class.start_time|date:"M d, Y"|default:"Not scheduled" }}</td>
+                                                <td class="py-3 text-muted">{{ attendance|format_joined_time }}</td>
+                                                <td class="py-3 text-muted">{{ attendance|format_exited_time }}</td>
+                                                <td class="py-3 text-danger">{{ attendance|late_by }}</td>
+                                                <td class="py-3 text-warning">{{ attendance|missed_time }}</td>
+                                                <td class="py-3 text-success fw-bold">{{ attendance|format_attended_duration }}</td>
+                                                <td class="py-3">
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        {% if attendance.status == 'present' %}
+                                                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3 py-2"><i class="bi bi-check-circle me-1"></i> Present</span>
+                                                        {% elif attendance.status == 'late' %}
+                                                        <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3 py-2"><i class="bi bi-clock-history me-1"></i> Late</span>
+                                                        {% else %}
+                                                        <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3 py-2"><i class="bi bi-x-circle me-1"></i> Absent</span>
+                                                        {% endif %}
+                                                        <span class="text-muted small fw-bold">{{ attendance|attendance_percentage_val }}%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                    <p class="text-muted mb-0"><i class="bi bi-calendar-x me-2"></i>No attendance records found for this student.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-5 text-center text-muted">
+                            <i class="bi bi-people fs-1 d-block mb-3"></i>
+                            <p class="mb-0">You haven't linked any students to your account yet.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- PAYMENT HISTORY TAB -->
+            <div class="tab-pane fade" id="payments" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4">Payment History</h2>
+                {% if children %}
+                    {% for child in children %}
+                        <div class="card shadow-sm border-0 rounded-4 mb-4">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                                <h5 class="fw-bold text-success mb-0"><i class="bi bi-person-badge me-2"></i>{{ child.user.get_full_name|default:child.user.username }}</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                {% if child.enrollments.all %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0 datatable w-100">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="ps-4 py-3">Course Title</th>
+                                                <th class="py-3">Date of Enrollment</th>
+                                                <th class="pe-4 py-3 text-end">Amount Paid</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for enrollment in child.enrollments.all %}
+                                            <tr>
+                                                <td class="ps-4 py-3 fw-bold">{{ enrollment.course.title }}</td>
+                                                <td class="py-3 text-muted">{{ enrollment.date_enrolled|date:"M d, Y" }}</td>
+                                                <td class="pe-4 py-3 text-end fw-bolder text-success">₹{{ enrollment.course.price }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                    <div class="p-4 text-muted">
+                                        <p class="mb-0"><i class="bi bi-receipt me-2"></i>No payment records found for this student.</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-5 text-center text-muted">
+                            <i class="bi bi-people fs-1 d-block mb-3"></i>
+                            <p class="mb-0">You haven't linked any students to your account yet.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Handle Search and Date filtering
+        function applyFilters(targetId) {
+            const searchInput = document.querySelector(`.search-classes-input[data-target="${targetId}"]`);
+            const dateInput = document.querySelector(`.date-filter-input[data-target="${targetId}"]`);
+            
+            const query = searchInput ? searchInput.value.toLowerCase() : '';
+            const selectedDate = dateInput ? dateInput.value : ''; // format: YYYY-MM-DD
+            
+            // Apply to both upcoming and ended lists
+            const lists = [
+                document.getElementById(`upcoming-list-${targetId}`),
+                document.getElementById(`ended-list-${targetId}`)
+            ];
+            
+            lists.forEach(list => {
+                if(!list) return;
+                const items = list.querySelectorAll('.class-item');
+                items.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    const itemDate = item.getAttribute('data-date');
+                    
+                    const matchesSearch = text.includes(query);
+                    const matchesDate = !selectedDate || itemDate === selectedDate;
+                    
+                    if (matchesSearch && matchesDate) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        document.querySelectorAll('.search-classes-input').forEach(input => {
+            input.addEventListener('input', function() {
+                applyFilters(this.getAttribute('data-target'));
+            });
+        });
+
+        document.querySelectorAll('.date-filter-input').forEach(input => {
+            input.addEventListener('change', function() {
+                applyFilters(this.getAttribute('data-target'));
+            });
+        });
+
+        // Handle Sorting
+        document.querySelectorAll('.sort-classes-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const isAscending = this.getAttribute('data-sort-asc') === 'true';
+                
+                // Toggle state
+                this.setAttribute('data-sort-asc', !isAscending);
+                this.innerHTML = !isAscending ? '<i class="bi bi-arrow-up"></i> Sort' : '<i class="bi bi-arrow-down"></i> Sort';
+
+                const lists = [
+                    document.getElementById(`upcoming-list-${targetId}`),
+                    document.getElementById(`ended-list-${targetId}`)
+                ];
+                
+                lists.forEach(list => {
+                    if(!list) return;
+                    const items = Array.from(list.querySelectorAll('.class-item'));
+                    items.sort((a, b) => {
+                        const timeA = parseInt(a.getAttribute('data-timestamp'));
+                        const timeB = parseInt(b.getAttribute('data-timestamp'));
+                        return !isAscending ? timeA - timeB : timeB - timeA;
+                    });
+                    
+                    items.forEach(item => list.appendChild(item));
+                });
+            });
+        });
+
+    });
+</script>
+{% endblock %}

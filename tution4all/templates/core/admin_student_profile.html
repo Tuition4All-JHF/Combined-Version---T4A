@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% load dict_extras %}
+
+{% block title %}Student Profile - Admin{% endblock %}
+
+{% block content %}
+<div class="row py-4">
+    <div class="col-12 mb-4 d-flex justify-content-between align-items-center">
+        <h2 class="fw-bold text-primary m-0"><i class="bi bi-person-badge"></i> Student Complete Report</h2>
+        <div class="d-print-none">
+            <button onclick="window.print()" class="btn btn-primary rounded-pill me-2"><i class="bi bi-printer"></i> Download PDF</button>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill">Back</a>
+        </div>
+    </div>
+
+    <!-- Student Info Card -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body text-center p-4">
+                <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center text-primary mb-3" style="width: 100px; height: 100px; font-size: 3rem;">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <h4 class="fw-bold">{{ student.user.get_full_name|default:student.user.username }}</h4>
+                <p class="text-muted mb-1"><i class="bi bi-envelope"></i> {{ student.user.email }}</p>
+                <p class="text-muted mb-3"><i class="bi bi-telephone"></i> {{ student.phone_number|default:"Not Provided" }}</p>
+                <div class="badge bg-light text-dark border p-2 w-100 mb-3 fs-6">
+                    Student ID: {{ student.student_id }}
+                </div>
+                
+                <hr>
+                
+                <h5 class="fw-bold mt-4 mb-3 text-start">Financial Summary</h5>
+                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 mb-2">
+                    <span class="text-muted">Total Spent</span>
+                    <span class="fw-bold text-success fs-5">₹ {{ total_spent }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3">
+                    <span class="text-muted">Enrolled Courses</span>
+                    <span class="fw-bold fs-5">{{ enrollments.count }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Payment & Enrollment History -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h4 class="fw-bold text-primary"><i class="bi bi-receipt"></i> Payment & Enrollment History</h4>
+            </div>
+            <div class="card-body p-4">
+                {% if enrollments %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Course Title</th>
+                                <th>Teacher</th>
+                                <th>Price</th>
+                                <th>Enrolled Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for enrollment in enrollments %}
+                            <tr>
+                                <td class="fw-bold">{{ enrollment.course.title }}</td>
+                                <td>{{ enrollment.course.teacher.user.get_full_name|default:enrollment.course.teacher.user.username }}</td>
+                                <td class="text-success fw-bold">₹ {{ enrollment.course.price }}</td>
+                                <td class="text-muted small">{{ enrollment.date_enrolled|date:"M d, Y" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-journal-x fs-1 mb-2 d-block"></i>
+                    <p>This student is not enrolled in any courses yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Shared Attendance Analytics -->
+        {% include 'core/partials/attendance_analytics.html' %}
+
+        <!-- Full Attendance Log -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h4 class="fw-bold text-primary"><i class="bi bi-calendar-check"></i> Complete Attendance Log</h4>
+            </div>
+            <div class="card-body p-4">
+                {% if attendances %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Live Class</th>
+                                <th>Date & Time</th>
+                                <th>Joined</th>
+                                <th>Exited</th>
+                                <th>Late By</th>
+                                <th>Missed</th>
+                                <th>Attended</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in attendances %}
+                            <tr>
+                                <td class="fw-bold">{{ attendance.live_class.title }}<br><small class="text-muted fw-normal">Total: {{ attendance.live_class|class_duration }}</small></td>
+                                <td>{{ attendance.live_class.start_time|date:"M d, Y" }} - {{ attendance.live_class.start_time|time:"h:i A" }}</td>
+                                <td class="text-muted">{{ attendance.joined_at|date:"h:i A" }}</td>
+                                <td class="text-muted">{{ attendance.exited_at|date:"h:i A"|default:"-" }}</td>
+                                <td class="text-danger">{{ attendance|late_by }}</td>
+                                <td class="text-warning">{{ attendance|missed_time }}</td>
+                                <td class="text-success fw-bold">{{ attendance.duration|duration_format }}</td>
+                                <td>
+                                    {% if attendance.status == 'present' %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% elif attendance.status == 'absent' %}
+                                    <span class="badge bg-danger">Absent</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ attendance.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-clock-history fs-1 mb-2 d-block"></i>
+                    <p>No attendance records found.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

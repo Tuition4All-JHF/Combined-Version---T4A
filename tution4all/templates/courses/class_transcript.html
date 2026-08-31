@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}{{ live_class.title }} - Transcript{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0 text-primary"><i class="bi bi-file-earmark-text-fill me-2"></i> Class Details: {{ live_class.title }}</h2>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary rounded-pill px-4">Back</a>
+    </div>
+
+    <!-- Tabs Nav -->
+    <ul class="nav nav-pills mb-4" id="classDetailsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4 me-2 fw-bold" id="auto-script-tab" data-bs-toggle="pill" data-bs-target="#auto-script" type="button" role="tab" aria-controls="auto-script" aria-selected="true">
+                <i class="bi bi-robot me-1"></i> Auto Live Script
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4 fw-bold" id="manual-notes-tab" data-bs-toggle="pill" data-bs-target="#manual-notes" type="button" role="tab" aria-controls="manual-notes" aria-selected="false">
+                <i class="bi bi-journal-text me-1"></i> Manual Notes
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tabs Content -->
+    <div class="tab-content" id="classDetailsTabsContent">
+        
+        <!-- Tab 1: Auto Script -->
+        <div class="tab-pane fade show active" id="auto-script" role="tabpanel" aria-labelledby="auto-script-tab">
+            <!-- AI Summary Card -->
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold text-success mb-3"><i class="bi bi-stars me-2"></i> AI Summary</h4>
+                    {% if live_class.ai_summary %}
+                        <div class="bg-light p-4 rounded-3 border-start border-4 border-success" style="white-space: pre-wrap; font-size: 1.1rem; line-height: 1.6;">{{ live_class.ai_summary }}</div>
+                    {% else %}
+                        <p class="text-muted fst-italic">No AI summary is available for this class.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Transcript Card -->
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold mb-3"><i class="bi bi-mic-fill text-primary me-2"></i> Full Transcript</h4>
+                    {% if live_class.transcript %}
+                        <div class="bg-white p-4 rounded-3 border" style="white-space: pre-wrap; font-size: 1.05rem; line-height: 1.8; color: #333;">{{ live_class.transcript }}</div>
+                    {% else %}
+                        <p class="text-muted fst-italic">No transcript was recorded for this class.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab 2: Manual Notes -->
+        <div class="tab-pane fade" id="manual-notes" role="tabpanel" aria-labelledby="manual-notes-tab">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-body p-4">
+                    <h4 class="fw-bold text-primary mb-4"><i class="bi bi-journals me-2"></i> Teacher's Manual Notes & Documents</h4>
+                    
+                    {% if manual_notes %}
+                        <div class="list-group list-group-flush">
+                            {% for note in manual_notes %}
+                                <div class="list-group-item px-0 py-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="fw-bold text-dark fs-5">
+                                            Note added on {{ note.created_at|date:"M d, Y h:i A" }}
+                                        </div>
+                                        <div>
+                                            {% if note.visibility == 'teacher_only' %}
+                                                <span class="badge bg-danger rounded-pill"><i class="bi bi-lock-fill"></i> Teacher Only</span>
+                                            {% elif note.visibility == 'parents_only' %}
+                                                <span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-people-fill"></i> Parents Only</span>
+                                            {% else %}
+                                                <span class="badge bg-success rounded-pill"><i class="bi bi-globe"></i> Everyone</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <p class="mb-3" style="white-space: pre-wrap; font-size: 1.05rem; line-height: 1.6; color: #444;">{{ note.content }}</p>
+                                    
+                                    {% if note.file %}
+                                        <a href="{{ note.file.url }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill">
+                                            <i class="bi bi-paperclip"></i> Download Attachment
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-journal-x text-muted mb-3" style="font-size: 3rem;"></i>
+                            <p class="text-muted fs-5 mb-0">No manual notes have been shared for this class yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+{% endblock %}

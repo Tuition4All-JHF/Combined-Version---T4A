@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Teacher - Tution4All Admin{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+    <div class="col-md-8">
+        <a href="{% url 'core:dashboard' %}" class="btn btn-light rounded-pill border shadow-sm mb-4"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+        
+        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="card-header bg-primary text-white text-center p-4" style="background: linear-gradient(135deg, #4cc9f0 0%, #4361ee 100%);">
+                <h3 class="mb-0 fw-bold"><i class="bi bi-person-plus-fill"></i> Add New Teacher</h3>
+                <p class="mb-0 opacity-75">Directly register a new educator to the platform.</p>
+            </div>
+            <div class="card-body p-5">
+                <div class="alert alert-info rounded-3 mb-4">
+                    <i class="bi bi-info-circle-fill"></i> Teachers added by the Admin are automatically approved.
+                </div>
+                
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Hide the role selector using CSS but still render it so form handles it -->
+                    <div style="display:none;">
+                        {{ form.role|as_crispy_field }}
+                    </div>
+                    
+                    <!-- Render all other fields except role -->
+                    {% for field in form %}
+                        {% if field.name != 'role' %}
+                            {{ field|as_crispy_field }}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div id="custom_certificates_block" class="mt-4 p-4 border rounded-3 bg-light">
+                        <label class="form-label fw-bold text-primary"><i class="bi bi-file-earmark-medical-fill"></i> Upload Certificates (Optional)</label>
+                        <div id="certificate-inputs-wrapper">
+                            <div class="certificate-entry d-flex gap-2 mb-2">
+                                <input type="text" name="cert_title[]" class="form-control" placeholder="Document Name (e.g. Degree)">
+                                <input type="file" name="cert_file[]" class="form-control">
+                            </div>
+                        </div>
+                        <button type="button" id="add-cert-btn" class="btn btn-sm btn-outline-primary mt-2 rounded-pill">
+                            <i class="bi bi-plus-lg"></i> Add Another Document
+                        </button>
+                    </div>
+
+                    <div class="d-grid mt-5">
+                        <button type="submit" class="btn btn-success btn-lg rounded-pill fw-bold shadow-sm"><i class="bi bi-check-circle-fill"></i> Register & Approve Teacher</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addCertBtn = document.getElementById('add-cert-btn');
+        if (addCertBtn) {
+            addCertBtn.addEventListener('click', function() {
+                const wrapper = document.getElementById('certificate-inputs-wrapper');
+                const newEntry = document.createElement('div');
+                newEntry.className = 'certificate-entry d-flex gap-2 mb-2';
+                newEntry.innerHTML = `
+                    <input type="text" name="cert_title[]" class="form-control" placeholder="Document Name (e.g. Degree)">
+                    <input type="file" name="cert_file[]" class="form-control">
+                `;
+                wrapper.appendChild(newEntry);
+            });
+        }
+    });
+</script>
+{% endblock %}

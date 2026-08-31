@@ -1,0 +1,623 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Professional Calendar - Tuition4All{% endblock %}
+
+{% block extra_css %}
+<!-- FullCalendar CSS -->
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+<!-- Datatables CSS -->
+<link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<style>
+    .fc {
+        font-family: 'Outfit', 'Inter', sans-serif !important;
+        background: #ffffff;
+        border-radius: 16px;
+    }
+    
+    .fc-toolbar-title {
+        font-weight: 700 !important;
+        color: #2c3e50;
+        font-size: 1.4rem !important;
+        letter-spacing: -0.5px;
+    }
+    
+    .fc-button-primary {
+        background-color: #f8fafc !important;
+        border-color: #e2e8f0 !important;
+        color: #475569 !important;
+        font-weight: 600 !important;
+        text-transform: capitalize !important;
+        box-shadow: none !important;
+        border-radius: 8px !important;
+        transition: all 0.2s ease;
+    }
+    
+    .fc-button-primary:hover {
+        background-color: #cbd5e1 !important;
+        color: #1e293b !important;
+    }
+    
+    .fc-button-active {
+        background-color: #4361ee !important;
+        border-color: #4361ee !important;
+        color: #ffffff !important;
+    }
+
+    .fc-theme-standard th {
+        border-color: #f1f5f9;
+        padding: 10px 0;
+        background: #f8fafc;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+    }
+
+    .fc-theme-standard td, .fc-theme-standard th {
+        border-color: #f1f5f9;
+    }
+
+    .fc-event {
+        border: none !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .fc-event:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 5 !important;
+    }
+
+    .custom-event {
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        color: #fff;
+    }
+    
+    .event-time {
+        font-size: 0.7rem;
+        font-weight: 700;
+        opacity: 0.9;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+    }
+    
+    .event-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+
+    .legend-container {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        background: #fff;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        border: 1px solid #f1f5f9;
+        align-items: center;
+    }
+
+    .legend-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+    }
+    
+    .legend-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .analytics-card {
+        border-radius: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .analytics-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4 mb-5" style="max-width: 1500px;">
+    <!-- Top Action Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold m-0" style="color: #1e293b; letter-spacing: -0.5px;">
+                <i class="bi bi-calendar2-week text-primary me-2"></i>Teacher Professional Schedule
+            </h2>
+            <p class="text-muted small mt-1 mb-0">Systematically monitor availability times, sorted by date, hours, and booked statuses.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'courses:teacher_slots_list' %}" class="btn btn-primary shadow-sm rounded-pill px-4 fw-bold">
+                <i class="bi bi-table me-2"></i>Full Slot Report
+            </a>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-light border shadow-sm rounded-pill px-4 fw-bold text-secondary">
+                <i class="bi-arrow-left me-2"></i>Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Analytics Dashboard widgets -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card analytics-card border-0 shadow-sm bg-white p-3 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-primary bg-opacity-10 text-primary rounded-3 p-3">
+                        <i class="bi bi-calendar-check fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Total Slots</h6>
+                        <h3 class="fw-bold mb-0 text-dark">{{ total_slots }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card analytics-card border-0 shadow-sm bg-white p-3 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-success bg-opacity-10 text-success rounded-3 p-3">
+                        <i class="bi bi-bookmark-star fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Booked Slots</h6>
+                        <h3 class="fw-bold mb-0 text-dark">{{ booked_slots }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card analytics-card border-0 shadow-sm bg-white p-3 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-info bg-opacity-10 text-info rounded-3 p-3">
+                        <i class="bi bi-percent fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Booking Rate</h6>
+                        <h3 class="fw-bold mb-0 text-dark">{{ booking_rate }}%</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card analytics-card border-0 shadow-sm bg-white p-3 h-100">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-warning bg-opacity-10 text-warning rounded-3 p-3">
+                        <i class="bi bi-clock-history fs-3"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-muted small mb-1">Scheduled Hours</h6>
+                        <h3 class="fw-bold mb-0 text-dark">{{ total_hours }}h</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Range & Search Filter Bar -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event me-1"></i> From Date</label>
+                <input type="date" id="filter-start-date" class="form-control form-control-sm rounded-pill">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-calendar-event-fill me-1"></i> To Date</label>
+                <input type="date" id="filter-end-date" class="form-control form-control-sm rounded-pill">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-muted mb-1"><i class="bi bi-filter me-1"></i> Status</label>
+                <select id="slot-status-filter" class="form-select form-select-sm rounded-pill">
+                    <option value="">All Slots</option>
+                    <option value="free">🟢 Available (Free)</option>
+                    <option value="busy">🔴 Booked (Busy)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button id="btn-apply-date-filter" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold w-100">
+                    <i class="bi bi-search me-1"></i> Filter Calendar
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button id="btn-clear-date-filter" class="btn btn-outline-secondary btn-sm rounded-pill px-4 fw-bold w-100">
+                    Clear Filter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Legend -->
+    <div class="legend-container">
+        <span class="legend-label text-muted small"><i class="bi bi-info-circle me-1"></i> Class Status:</span>
+        <div class="legend-badge"><div class="legend-dot" style="background: #10b981;"></div> Private (Available)</div>
+        <div class="legend-badge"><div class="legend-dot" style="background: #f59e0b;"></div> Partially Booked</div>
+        <div class="legend-badge"><div class="legend-dot" style="background: #ef4444;"></div> Fully Booked</div>
+        <div class="legend-badge"><div class="legend-dot" style="background: #0ea5e9;"></div> Group Public</div>
+        <div class="legend-badge"><div class="legend-dot" style="background: #64748b;"></div> Ended / Past</div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Calendar (Left column) -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden p-4">
+                <div id="calendar"></div>
+            </div>
+        </div>
+
+        <!-- Availability / Unavailability Slot Report (Right column) -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <h5 class="fw-bold text-dark mb-3"><i class="bi bi-hourglass-split text-primary me-2"></i>Slot Availability Analysis</h5>
+                
+                <div class="table-responsive">
+                    <table class="table table-hover" id="availability-slots-table" style="font-size: 0.82rem;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time Range</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="availability-slots-body">
+                            <!-- Populated dynamically via JS based on visible calendar dates -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Event Details -->
+<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow-lg">
+      <div class="modal-header border-bottom-0 pb-0">
+        <div class="d-flex align-items-center gap-2">
+            <div id="modalStatusIcon" class="p-2 rounded-circle text-white d-flex align-items-center justify-content-center" style="width:40px; height:40px;">
+                <i class="bi bi-calendar-event fs-5"></i>
+            </div>
+            <h5 class="modal-title fw-bold" id="eventModalLabel">Session Details</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body pt-3">
+        <h4 id="modalClassTitle" class="fw-bold text-dark mb-4 border-bottom pb-3"></h4>
+        
+        <div class="row g-3 mb-4">
+            <div class="col-6">
+                <div class="p-3 bg-light rounded-3 h-100">
+                    <p class="text-muted small fw-bold mb-1 text-uppercase tracking-wider">Date & Time</p>
+                    <p class="mb-0 fw-bold text-dark" id="modalTime" style="font-size: 0.9rem;"></p>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="p-3 bg-light rounded-3 h-100">
+                    <p class="text-muted small fw-bold mb-1 text-uppercase tracking-wider">Bookings</p>
+                    <p class="mb-0 fw-bold text-dark fs-5" id="modalBookings"></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mb-3">
+            <p class="text-muted small fw-bold mb-2 text-uppercase tracking-wider"><i class="bi bi-journal-bookmark text-primary me-1"></i> Course</p>
+            <p class="fw-bold text-dark bg-white border p-3 rounded-3 shadow-sm" id="modalCourse"></p>
+        </div>
+
+        <div id="modalStudentsContainer" class="d-none mt-4">
+            <p class="text-muted small fw-bold mb-2 text-uppercase tracking-wider"><i class="bi bi-people-fill text-success me-1"></i> Enrolled Students</p>
+            <div id="modalStudents" class="d-flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-top-0 pt-0 d-flex flex-column gap-2">
+        <div id="modalActions" class="w-100"></div>
+        <button type="button" class="btn btn-light rounded-pill px-4 fw-bold w-100" data-bs-dismiss="modal">Close Window</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- FullCalendar JS -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+<!-- Datatables JS -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var eventModal = new bootstrap.Modal(document.getElementById('eventModal'));
+        var calendar;
+        var customRangeActive = false;
+
+        // Dynamic Slots Generation logic based on current view dates
+        function updateAvailabilityTable(viewStart, viewEnd) {
+            const tableBody = document.getElementById('availability-slots-body');
+            const events = calendar.getEvents();
+            
+            // Clear table and destroy existing Datatable if initialized
+            if ($.fn.DataTable.isDataTable('#availability-slots-table')) {
+                $('#availability-slots-table').DataTable().destroy();
+            }
+            tableBody.innerHTML = '';
+            
+            let current = new Date(viewStart);
+            const end = new Date(viewEnd);
+            
+            // Define working hours: 09:00 to 21:00 (9 AM to 9 PM)
+            const startHour = 9;
+            const endHour = 21;
+            const rows = [];
+            
+            while (current < end) {
+                // Generate slots for each day
+                for (let hour = startHour; hour < endHour; hour++) {
+                    const slotStart = new Date(current);
+                    slotStart.setHours(hour, 0, 0, 0);
+                    
+                    const slotEnd = new Date(current);
+                    slotEnd.setHours(hour + 1, 0, 0, 0);
+                    
+                    // Check overlap with any event
+                    let overlappingEvent = null;
+                    for (let ev of events) {
+                        if (ev.start && ev.end) {
+                            if (slotStart < ev.end && slotEnd > ev.start) {
+                                overlappingEvent = ev;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    const dateLabel = slotStart.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                    const timeLabel = slotStart.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true }) + ' - ' + slotEnd.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
+                    
+                    let statusBadge = '';
+                    let detail = '';
+                    let filterStatus = '';
+                    
+                    if (overlappingEvent) {
+                        statusBadge = '<span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-2 py-1"><i class="bi bi-x-circle-fill me-1"></i>Booked</span>';
+                        detail = `<strong class="text-dark">${overlappingEvent.title.split(' - ')[0]}</strong>`;
+                        filterStatus = 'busy';
+                    } else {
+                        statusBadge = '<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1"><i class="bi bi-check-circle-fill me-1"></i>Available</span>';
+                        detail = '<span class="text-muted">Free Time Slot</span>';
+                        filterStatus = 'free';
+                    }
+                    
+                    rows.push({
+                        dateSort: slotStart.getTime(),
+                        dateLabel: dateLabel,
+                        timeLabel: timeLabel,
+                        status: statusBadge,
+                        filterStatus: filterStatus,
+                        detail: detail
+                    });
+                }
+                current.setDate(current.getDate() + 1);
+            }
+            
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td data-order="${r.dateSort}">${r.dateLabel}</td>
+                    <td>${r.timeLabel}</td>
+                    <td>${r.status}</td>
+                    <td>${r.detail}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+            
+            // Re-initialize Datatable with date sorting
+            const dataTable = $('#availability-slots-table').DataTable({
+                pageLength: 7,
+                lengthMenu: [7, 15, 30],
+                searching: true,
+                info: false,
+                ordering: true,
+                order: [[0, 'asc']], // Default sort by date ascending
+                language: {
+                    searchPlaceholder: "Search slots..."
+                }
+            });
+            
+            // Apply status filter
+            const statusFilter = document.getElementById('slot-status-filter');
+            statusFilter.onchange = function() {
+                const val = this.value;
+                if (val === 'free') {
+                    dataTable.columns(2).search('Available').draw();
+                } else if (val === 'busy') {
+                    dataTable.columns(2).search('Booked').draw();
+                } else {
+                    dataTable.columns(2).search('').draw();
+                }
+            };
+            
+            // Trigger filter initially if filter dropdown already has value
+            if (statusFilter.value) {
+                statusFilter.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // Initialize FullCalendar
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            slotMinTime: '06:00:00',
+            slotMaxTime: '23:00:00',
+            allDaySlot: false,
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'timeGridWeek,timeGridDay,dayGridMonth,listYear'
+            },
+            themeSystem: 'standard',
+            nowIndicator: true,
+            slotDuration: '00:30:00',
+            eventOverlap: true,
+            
+            eventContent: function(arg) {
+                if (arg.view.type === 'dayGridMonth') {
+                    return undefined; 
+                }
+                
+                let timeText = arg.timeText;
+                let titleHtml = arg.event.title.split(' - ')[0];
+                
+                let html = `
+                    <div class="custom-event">
+                        <div class="event-time">
+                            <i class="bi bi-clock"></i> ${timeText}
+                        </div>
+                        <div class="event-title">
+                            ${titleHtml}
+                        </div>
+                    </div>
+                `;
+                return { html: html };
+            },
+            
+            events: '{% url "courses:api_teacher_calendar_events" %}',
+            eventClick: function(info) {
+                let title = info.event.title.split(' - ')[0];
+                document.getElementById('modalClassTitle').innerText = title; 
+                document.getElementById('modalCourse').innerText = info.event.extendedProps.course;
+                
+                let headerIcon = document.getElementById('modalStatusIcon');
+                headerIcon.style.backgroundColor = info.event.backgroundColor;
+
+                var opts = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+                var start = info.event.start.toLocaleDateString(undefined, opts);
+                var end = info.event.end ? info.event.end.toLocaleTimeString(undefined, {hour: 'numeric', minute: '2-digit'}) : '';
+                document.getElementById('modalTime').innerText = start + (end ? ' to ' + end : '');
+                
+                let bCount = info.event.extendedProps.bookedCount;
+                let maxC = info.event.extendedProps.maxCapacity;
+                document.getElementById('modalBookings').innerHTML = `<span class="${bCount >= maxC ? 'text-danger' : 'text-success'}">${bCount}</span> / ${maxC}`;
+                
+                var studentsStr = info.event.extendedProps.students;
+                let stdContainer = document.getElementById('modalStudentsContainer');
+                let stdDiv = document.getElementById('modalStudents');
+                
+                if(studentsStr && studentsStr.trim() !== '') {
+                    let students = studentsStr.split(', ');
+                    let badges = students.map(s => `<span class="badge bg-white border text-dark px-3 py-2 shadow-sm rounded-pill"><i class="bi bi-person me-1"></i> ${s}</span>`).join('');
+                    stdDiv.innerHTML = badges;
+                    stdContainer.classList.remove('d-none');
+                } else {
+                    stdContainer.classList.add('d-none');
+                }
+                
+                let actionsDiv = document.getElementById('modalActions');
+                actionsDiv.innerHTML = '';
+                if (bCount === 0 && !info.event.extendedProps.isEnded) {
+                    let deleteBtn = document.createElement('button');
+                    deleteBtn.className = "btn btn-danger rounded-pill px-4 fw-bold w-100 mb-2";
+                    deleteBtn.innerHTML = '<i class="bi bi-trash3-fill me-2"></i>Delete Slot';
+                    deleteBtn.onclick = async function() {
+                        if (confirm("Are you sure you want to delete this slot?")) {
+                            try {
+                                const response = await fetch(`/courses/live/${info.event.id}/delete/`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'X-CSRFToken': '{{ csrf_token }}'
+                                    }
+                                });
+                                if (response.ok) {
+                                    alert("Slot deleted successfully.");
+                                    window.location.reload();
+                                } else {
+                                    alert("Failed to delete slot.");
+                                }
+                            } catch (err) {
+                                alert("Failed to connect to the server.");
+                            }
+                        }
+                    };
+                    actionsDiv.appendChild(deleteBtn);
+                }
+                
+                eventModal.show();
+            },
+            datesSet: function(dateInfo) {
+                // Populate table automatically unless a custom filter range is active
+                if (!customRangeActive) {
+                    setTimeout(() => {
+                        updateAvailabilityTable(dateInfo.start, dateInfo.end);
+                    }, 400);
+                }
+            }
+        });
+        
+        calendar.render();
+
+        // Date Range Search/Filter Button Handlers
+        const btnApply = document.getElementById('btn-apply-date-filter');
+        const btnClear = document.getElementById('btn-clear-date-filter');
+        const startDateInput = document.getElementById('filter-start-date');
+        const endDateInput = document.getElementById('filter-end-date');
+
+        btnApply.onclick = function() {
+            const startVal = startDateInput.value;
+            const endVal = endDateInput.value;
+
+            if (!startVal || !endVal) {
+                alert("Please select both From and To dates.");
+                return;
+            }
+
+            const startDate = new Date(startVal);
+            startDate.setHours(0,0,0,0);
+            const endDate = new Date(endVal);
+            endDate.setHours(23,59,59,999);
+
+            if (startDate > endDate) {
+                alert("From Date cannot be after To Date.");
+                return;
+            }
+
+            customRangeActive = true;
+            // Jump calendar to the start date of filter
+            calendar.gotoDate(startVal);
+            
+            // Re-render table for the exact range requested
+            updateAvailabilityTable(startDate, endDate);
+        };
+
+        btnClear.onclick = function() {
+            startDateInput.value = '';
+            endDateInput.value = '';
+            customRangeActive = false;
+            
+            // Reset to current calendar visible dates
+            const currentView = calendar.view;
+            updateAvailabilityTable(currentView.activeStart, currentView.activeEnd);
+        };
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,475 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home - Tuition4All | Academic Excellence & Verified Trust{% endblock %}
+
+{% block content %}
+<style>
+    /* Hero Section */
+    .t4a-hero {
+        padding: 4rem 0 3rem;
+        background: var(--bg-color);
+        position: relative;
+        overflow: hidden;
+    }
+    .t4a-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%; left: -50%; width: 200%; height: 200%;
+        background: radial-gradient(circle at 70% 30%, rgba(103,92,245,0.04) 0%, transparent 60%);
+        z-index: 0;
+    }
+    .hero-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(103,92,245,0.06);
+        border: 1px solid rgba(103,92,245,0.15);
+        border-radius: 9999px;
+        padding: 0.4rem 1rem;
+        font-size: 0.75rem;
+        color: var(--primary-color);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+    }
+    .hero-title {
+        font-family: var(--font-heading);
+        font-weight: 800;
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        line-height: 1.1;
+        color: var(--text-primary);
+        letter-spacing: -0.02em;
+        margin-bottom: 1.5rem;
+    }
+    .hero-subtitle {
+        font-size: 1rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+        max-width: 36rem;
+        margin-bottom: 2rem;
+    }
+    .hero-photo-container {
+        position: relative;
+        width: 100%;
+        max-width: 420px;
+        aspect-ratio: 4/4.5;
+        border-radius: 48px;
+        overflow: hidden;
+        border: 1px solid rgba(103,92,245,0.2);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+        background: var(--primary-deep);
+        margin: 0 auto;
+    }
+    .hero-photo-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    /* Glow blobs */
+    .hero-glow-1 {
+        position: absolute;
+        width: 16rem;
+        height: 16rem;
+        background: rgba(103,92,245,0.06);
+        border-radius: 50%;
+        filter: blur(60px);
+        left: -2rem;
+        bottom: -2rem;
+        z-index: -1;
+    }
+    .hero-glow-2 {
+        position: absolute;
+        width: 12rem;
+        height: 12rem;
+        background: rgba(196,192,255,0.1);
+        border-radius: 50%;
+        filter: blur(50px);
+        right: -2rem;
+        top: 2rem;
+        z-index: -1;
+    }
+    /* Floating badges */
+    .hero-float-badge {
+        position: absolute;
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(12px);
+        border-radius: 1rem;
+        padding: 0.75rem 1rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        border: 1px solid rgba(103,92,245,0.15);
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: transform 0.3s ease;
+    }
+    .hero-float-badge:hover { transform: scale(1.05); }
+    .hero-float-left { top: 3rem; left: -2rem; }
+    .hero-float-right { bottom: 1.5rem; right: -1.5rem; }
+    /* Audience cards */
+    .audience-card-violet:hover { border-color: #c4b5fd; box-shadow: 0 20px 40px rgba(139,92,246,0.08); }
+    .audience-card-violet:hover .card-bg-fill { background: linear-gradient(to bottom right, rgba(245,243,255,0.5), rgba(237,233,254,0.4)); }
+    .audience-card-emerald:hover { border-color: #6ee7b7; box-shadow: 0 20px 40px rgba(16,185,129,0.08); }
+    .audience-card-emerald:hover .card-bg-fill { background: linear-gradient(to bottom right, rgba(236,253,245,0.5), rgba(209,250,229,0.4)); }
+    .audience-card-amber:hover { border-color: #fcd34d; box-shadow: 0 20px 40px rgba(245,158,11,0.08); }
+    .audience-card-amber:hover .card-bg-fill { background: linear-gradient(to bottom right, rgba(255,251,235,0.5), rgba(254,243,199,0.4)); }
+    /* CTA Section */
+    .cta-section-bg {
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .cta-section-bg:hover .cta-glow { transform: scale(1.1); }
+    .cta-glow {
+        position: absolute;
+        right: -4rem;
+        top: -4rem;
+        width: 16rem;
+        height: 16rem;
+        border-radius: 50%;
+        background: rgba(103,92,245,0.05);
+        filter: blur(40px);
+        pointer-events: none;
+        transition: transform 0.7s ease;
+    }
+</style>
+
+<!-- ===================== HERO SECTION ===================== -->
+<section class="t4a-hero">
+    <div class="container position-relative" style="z-index: 1;">
+        <div class="row align-items-center g-5">
+            <!-- Left: Copy -->
+            <div class="col-lg-7">
+                <div class="hero-badge-pill">
+                    <svg class="flex-shrink-0" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.8 9.2L22 12L14.8 14.8L12 22L9.2 14.8L2 12L9.2 9.2L12 2Z"/></svg>
+                    <span>Academic Excellence & Verified Trust</span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="d-block">Better tutors.</span>
+                    <span class="d-block">Better learning.</span>
+                    <span class="d-block">Proven progress.</span>
+                </h1>
+                <p class="hero-subtitle">
+                    Tuition4All is the first tutoring network built entirely on proof, not promises. We connect top academic mentors with families who value real visibility — backed by verified credentials and real progress metrics.
+                </p>
+                <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-3 mb-3">
+                    <a href="{% url 'core:teachers' %}" class="btn btn-primary btn-lg px-4 rounded-3 fw-bold shadow d-inline-flex align-items-center gap-2" style="background: var(--gradient-accent); border: none;">
+                        <span>Find Your Tutor</span>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path></svg>
+                    </a>
+                    <a href="{% url 'core:become_tutor' %}" class="btn btn-lg px-4 rounded-3 fw-bold d-inline-flex align-items-center gap-2" style="background: white; border: 1px solid var(--border-color); color: var(--text-primary);">
+                        <span>Become a Rated Tutor</span>
+                        <span>&rarr;</span>
+                    </a>
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-3" style="color: var(--text-muted); font-size: 0.75rem; font-weight: 600;">
+                    <span class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 20px; height: 20px; background: rgba(103,92,245,0.08); color: var(--primary-color);">
+                        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"></path></svg>
+                    </span>
+                    <span>No commitment. No hidden fees.</span>
+                </div>
+            </div>
+            <!-- Right: Photo + floating badges -->
+            <div class="col-lg-5 position-relative mt-4 mt-lg-0 d-flex align-items-center justify-content-center">
+                <div class="hero-glow-1"></div>
+                <div class="hero-glow-2"></div>
+                <div class="hero-photo-container">
+                    <img src="{% static 'images/student_indigo_bg.png' %}" alt="Student">
+                </div>
+                <!-- Floating Badge: 4D Rating -->
+                <div class="hero-float-badge hero-float-left d-none d-md-flex">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 28px; height: 28px; background: #fef3c7; color: #d97706;">
+                        <span class="material-symbols-outlined" style="font-size: 16px; font-weight: bold;">star</span>
+                    </div>
+                    <div>
+                        <div style="font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--primary-color); letter-spacing: 0.1em; line-height: 1;">4D Rating System</div>
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-primary); margin-top: 2px; line-height: 1;">4.95/5 Quality Audited</div>
+                    </div>
+                </div>
+                <!-- Floating Badge: Parental Portal -->
+                <div class="hero-float-badge hero-float-right d-none d-md-flex">
+                    <div class="d-flex align-items-center justify-content-center rounded-3 flex-shrink-0" style="width: 40px; height: 40px; background: var(--primary-color); color: white; box-shadow: 0 4px 12px rgba(103,92,245,0.2);">
+                        <span class="material-symbols-outlined" style="font-size: 20px;">family_restroom</span>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-1" style="font-weight: 700; color: var(--text-primary); font-size: 13px; line-height: 1.2;">
+                            Parental Portal
+                            <span class="rounded-circle" style="width: 8px; height: 8px; background: #22c55e; display: inline-block;"></span>
+                        </div>
+                        <div style="font-size: 10px; color: var(--text-muted); font-weight: 600; margin-top: 2px;">Live Audio Logs & Ledger</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feature Strip -->
+        <div class="feature-strip mt-5">
+            <div class="feature-item">
+                <div class="feature-icon-circle">
+                    <span class="material-symbols-outlined">school</span>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0" style="font-size: 0.9rem; color: var(--text-primary);">Expert Tutors</h6>
+                    <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">Carefully selected for quality & empathy</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon-circle">
+                    <span class="material-symbols-outlined">auto_stories</span>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0" style="font-size: 0.9rem; color: var(--text-primary);">Personalized Learning</h6>
+                    <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">Custom plans that fit every learner</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon-circle">
+                    <span class="material-symbols-outlined">trending_up</span>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0" style="font-size: 0.9rem; color: var(--text-primary);">Track Progress</h6>
+                    <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">Regular updates to keep you informed</p>
+                </div>
+            </div>
+            <div class="feature-item">
+                <div class="feature-icon-circle">
+                    <span class="material-symbols-outlined">verified_user</span>
+                </div>
+                <div>
+                    <h6 class="fw-bold mb-0" style="font-size: 0.9rem; color: var(--text-primary);">Safe & Supportive</h6>
+                    <p class="mb-0" style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">A positive space to learn and grow</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== AUDIENCE CARDS ===================== -->
+<section class="py-5">
+    <div class="container py-4">
+        <div class="mb-5">
+            <span class="d-block fw-bold text-uppercase mb-2" style="font-size: 0.8rem; color: var(--primary-color); letter-spacing: 0.05em;">BUILT FOR THREE PEOPLE, NOT ONE</span>
+            <h2 class="brand-font fw-bold" style="font-size: 1.75rem; color: var(--text-primary);">A Platform That Actually Knows Who It's For</h2>
+        </div>
+        <div class="row g-4">
+            <!-- Student Card -->
+            <div class="col-md-4">
+                <a href="{% url 'core:teachers' %}" class="text-decoration-none">
+                    <div class="audience-card audience-card-violet h-100">
+                        <div class="card-bg-fill"></div>
+                        <div class="card-content d-flex flex-column h-100">
+                            <div class="photo-canvas">
+                                <img src="{% static 'images/student_photo.jpg' %}" alt="Student learning" style="object-position: center 30%;">
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 36px; height: 36px; background: var(--violet-50); color: var(--violet-600); border: 1px solid rgba(139,92,246,0.1);">
+                                    <span class="material-symbols-outlined" style="font-size: 20px;">school</span>
+                                </div>
+                                <h5 class="mb-0 fw-bold" style="font-size: 1.15rem; color: var(--text-primary);">For Students</h5>
+                            </div>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; flex: 1;">Find the tutor who actually gets you. Every rating is built from real outcomes, not a bio someone wrote about themselves.</p>
+                            <div class="pt-3 mt-auto" style="border-top: 1px solid rgba(0,0,0,0.05);">
+                                <span class="card-arrow-link" style="color: var(--violet-600);">Find Your Match <span class="material-symbols-outlined" style="font-size: 18px;">east</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <!-- Parent Card -->
+            <div class="col-md-4">
+                <a href="{% url 'accounts:register' %}" class="text-decoration-none">
+                    <div class="audience-card audience-card-emerald h-100">
+                        <div class="card-bg-fill"></div>
+                        <div class="card-content d-flex flex-column h-100">
+                            <div class="photo-canvas">
+                                <img src="{% static 'images/parent_photo.jpg' %}" alt="Parent and child">
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 36px; height: 36px; background: var(--emerald-50); color: var(--emerald-600); border: 1px solid rgba(16,185,129,0.1);">
+                                    <span class="material-symbols-outlined" style="font-size: 20px;">visibility</span>
+                                </div>
+                                <h5 class="mb-0 fw-bold" style="font-size: 1.15rem; color: var(--text-primary);">For Parents</h5>
+                            </div>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; flex: 1;">Stop wondering what's happening in that session. See what your child is learning and how every tutor is performing — in real time.</p>
+                            <div class="pt-3 mt-auto" style="border-top: 1px solid rgba(0,0,0,0.05);">
+                                <span class="card-arrow-link" style="color: var(--emerald-600);">See the Dashboard <span class="material-symbols-outlined" style="font-size: 18px;">east</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <!-- Tutor Card -->
+            <div class="col-md-4">
+                <a href="{% url 'core:become_tutor' %}" class="text-decoration-none">
+                    <div class="audience-card audience-card-amber h-100">
+                        <div class="card-bg-fill"></div>
+                        <div class="card-content d-flex flex-column h-100">
+                            <div class="photo-canvas">
+                                <img src="{% static 'images/tutor_photo.jpg' %}" alt="Professional tutor">
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 36px; height: 36px; background: var(--amber-50); color: var(--amber-600); border: 1px solid rgba(245,158,11,0.1);">
+                                    <span class="material-symbols-outlined" style="font-size: 20px;">payments</span>
+                                </div>
+                                <h5 class="mb-0 fw-bold" style="font-size: 1.15rem; color: var(--text-primary);">For Tutors</h5>
+                            </div>
+                            <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6; flex: 1;">Your reputation is your resume. Every great session builds your score — every strong score gets you more students and higher pay.</p>
+                            <div class="pt-3 mt-auto" style="border-top: 1px solid rgba(0,0,0,0.05);">
+                                <span class="card-arrow-link" style="color: var(--amber-600);">Start Building Your Score <span class="material-symbols-outlined" style="font-size: 18px;">east</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===================== TRENDING COURSES ===================== -->
+<section class="py-5">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="m-0 brand-font fw-bold" style="color: var(--text-primary); font-size: 1.5rem;">Trending Courses</h2>
+            <a href="{% url 'courses:list' %}" class="fw-bold text-decoration-none d-flex align-items-center gap-1" style="color: var(--primary-color); font-size: 0.875rem;">View All <span class="material-symbols-outlined" style="font-size: 18px;">east</span></a>
+        </div>
+        <div class="row g-4">
+            {% for course in trending_courses %}
+            <div class="col-md-3">
+                <a href="{% url 'courses:detail' course.id %}" class="text-decoration-none">
+                    <div class="card h-100 border-0" style="border-radius: var(--border-radius-xl);">
+                        <div class="card-body pt-4">
+                            <span class="badge rounded-pill px-3 py-2 mb-2" style="background: rgba(103,92,245,0.08); color: var(--primary-color); font-size: 0.75rem;">{{ course.category.name }}</span>
+                            <h6 class="fw-bold brand-font mb-3" style="color: var(--text-primary);">{{ course.title|truncatechars:40 }}</h6>
+                            <div class="d-flex align-items-center mb-3">
+                                {% if course.teacher.photo %}
+                                <img src="{{ course.teacher.photo.url }}" class="rounded-circle me-2" width="30" height="30" style="object-fit: cover; border: 2px solid var(--primary-color);">
+                                {% else %}
+                                <div class="rounded-circle me-2 d-flex align-items-center justify-content-center fw-bold" style="width: 30px; height: 30px; font-size: 0.8rem; background: var(--gradient-accent); color: white;">
+                                    {{ course.teacher.user.username|make_list|first|upper }}
+                                </div>
+                                {% endif %}
+                                <span class="small fw-bold" style="color: var(--text-muted);">{{ course.teacher.user.get_full_name|default:course.teacher.user.username }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center pt-3" style="border-top: 1px solid var(--border-color);">
+                                <span style="color: var(--text-muted); font-size: 0.8rem;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">schedule</span> {{ course.total_duration_hours }} hrs</span>
+                                <span class="fw-bold" style="color: var(--color-success); font-size: 1.1rem;">₹{{ course.price }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5" style="background: var(--bg-card); border-radius: var(--border-radius-xl); border: 1px solid var(--border-color);">
+                <span class="material-symbols-outlined d-block mb-3" style="font-size: 3rem; color: var(--primary-color);">library_books</span>
+                <p style="color: var(--text-muted);">No trending courses available at the moment. Check back later.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===================== CATEGORIES ===================== -->
+<section class="py-5 my-4 mx-3 mx-md-5 rounded-4" style="background: var(--bg-surface-dim);">
+    <div class="container text-center py-4">
+        <h2 class="mb-3 brand-font fw-bold" style="color: var(--text-primary); font-size: 1.5rem;">Explore Categories</h2>
+        <p class="mb-5" style="color: var(--text-muted);">Find the perfect subject to ignite your passion.</p>
+        <div class="d-flex justify-content-center flex-wrap gap-3">
+            {% for category in categories %}
+                <a href="{% url 'courses:list' %}?category={{ category.id }}" class="category-pill shadow-sm">
+                    <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary-color);">label</span>
+                    {{ category.name }}
+                </a>
+            {% empty %}
+                <p style="color: var(--text-muted);">No categories available yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===================== ELITE TEACHERS ===================== -->
+<section class="py-5 mb-4">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="pill-badge mx-auto mb-3">
+                <span class="material-symbols-outlined" style="font-size: 14px;">workspace_premium</span>
+                Meet the Network
+            </span>
+            <h2 class="brand-font fw-bold" style="color: var(--text-primary); font-size: 1.5rem;">Our Elite Instructors</h2>
+            <p class="mt-2 mx-auto" style="color: var(--text-muted); max-width: 500px;">Learn from the best verified educators in their respective fields.</p>
+        </div>
+        <div class="row justify-content-center g-4">
+            {% for teacher in teachers %}
+            <div class="col-md-3">
+                <div class="tutor-card h-100 text-center d-flex flex-column">
+                    <div style="overflow: hidden; border-radius: var(--border-radius-xl) var(--border-radius-xl) 0 0;">
+                        {% if teacher.photo %}
+                        <img src="{{ teacher.photo.url }}" class="tutor-photo" alt="{{ teacher.user.get_full_name }}">
+                        {% else %}
+                        <div class="d-flex align-items-center justify-content-center text-white" style="height: 16rem; background: var(--gradient-accent); font-size: 4rem; font-weight: 800;">
+                            {{ teacher.user.username|make_list|first|upper }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="p-4 d-flex flex-column flex-grow-1">
+                        <h6 class="fw-bold mb-1 brand-font">
+                            <a href="{% url 'core:public_teacher_profile' teacher.id %}" class="text-decoration-none" style="color: var(--text-primary);">{{ teacher.user.get_full_name|default:teacher.user.username }}</a>
+                        </h6>
+                        <p class="small mb-3 text-truncate" style="color: var(--text-muted);">
+                            <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle; color: var(--primary-color);">menu_book</span>
+                            {{ teacher.display_subjects }}
+                        </p>
+                        <div class="mt-auto">
+                            <a href="{% url 'core:public_teacher_profile' teacher.id %}" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold w-100">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12 text-center py-5" style="background: var(--bg-card); border-radius: var(--border-radius-xl); border: 1px solid var(--border-color);">
+                <span class="material-symbols-outlined d-block mb-3" style="font-size: 3rem; color: var(--primary-color);">group</span>
+                <p style="color: var(--text-muted);">No verified instructors available at the moment.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- ===================== CTA SECTION ===================== -->
+<section class="py-5 mb-5">
+    <div class="container">
+        <div class="cta-section-bg p-4 p-md-5">
+            <div class="cta-glow"></div>
+            <div class="row align-items-center g-4 position-relative" style="z-index: 1;">
+                <div class="col-lg-7">
+                    <span class="pill-badge mb-3">
+                        <span class="material-symbols-outlined" style="font-size: 12px;">verified</span>
+                        Academic Integrity First
+                    </span>
+                    <h2 class="brand-font fw-bold mb-3" style="font-size: clamp(1.75rem, 3vw, 2.75rem); color: var(--text-primary); line-height: 1.1; letter-spacing: -0.02em;">
+                        Proof instead of promises. <br>
+                        <span style="font-family: var(--font-serif); font-style: italic; font-weight: 300; color: var(--primary-color);">See the difference.</span>
+                    </h2>
+                    <p style="font-size: 1rem; color: var(--text-secondary); line-height: 1.7; max-width: 32rem;">
+                        Tuition4All verifies credentials, screens active teaching methods, and holds payments securely until learning is delivered.
+                    </p>
+                    <div class="d-flex flex-wrap gap-3 mt-4">
+                        <a href="{% url 'core:teachers' %}" class="btn btn-primary px-4 py-3 rounded-3 fw-bold d-flex align-items-center gap-2" style="background: var(--gradient-accent); border: none;">
+                            Find a Tutor <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
+                        </a>
+                        <a href="{% url 'core:become_tutor' %}" class="btn px-4 py-3 rounded-3 fw-bold d-flex align-items-center gap-2" style="background: white; border: 1px solid var(--border-color); color: var(--text-primary);">
+                            Become a Tutor
+                        </a>
+                    </div>
+                </div>
+                <div class="col-lg-5 d-none d-lg-block">
+                    <div class="rounded-4 overflow-hidden" style="border: 1px solid var(--border-color); aspect-ratio: 4/3;">
+                        <img src="{% static 'images/mission_primary.jpg' %}" alt="Academic success" class="w-100 h-100" style="object-fit: cover;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

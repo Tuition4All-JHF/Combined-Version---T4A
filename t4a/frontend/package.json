@@ -1,0 +1,53 @@
+{
+  "name": "Tuition4All",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@config-plugins/react-native-webrtc": "^15.0.1",
+    "@expo/vector-icons": "^15.1.1",
+    "@hookform/resolvers": "^5.4.0",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "^9.1.0",
+    "@react-native-community/slider": "^5.2.0",
+    "@react-native-picker/picker": "^2.11.4",
+    "@react-navigation/native": "^7.3.4",
+    "@react-navigation/native-stack": "^7.17.6",
+    "@reduxjs/toolkit": "^2.12.0",
+    "axios": "^1.18.1",
+    "dayjs": "^1.11.21",
+    "expo": "~56.0.12",
+    "expo-dev-client": "~56.0.20",
+    "expo-document-picker": "^56.0.4",
+    "expo-image-picker": "^56.0.18",
+    "expo-status-bar": "~56.0.4",
+    "expo-video": "~56.1.4",
+    "react": "19.2.3",
+    "react-hook-form": "^7.80.0",
+    "react-native": "0.85.3",
+    "react-native-big-calendar": "^4.19.0",
+    "react-native-gesture-handler": "~2.31.1",
+    "react-native-incall-manager": "^4.2.1",
+    "react-native-reanimated": "4.3.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "^4.25.2",
+    "react-native-svg": "15.15.4",
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-webrtc": "^124.0.7",
+    "react-native-webview": "13.16.1",
+    "react-native-worklets": "0.8.3",
+    "react-redux": "^9.3.0",
+    "tslib": "^2.8.1",
+    "yup": "^1.7.1"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "private": true
+}

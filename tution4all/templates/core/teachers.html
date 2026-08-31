@@ -1,0 +1,689 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Find a Tutor - Tuition4All{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Layout */
+    .find-tutor-container {
+        display: flex;
+        gap: 2rem;
+        margin-top: 2rem;
+        margin-bottom: 4rem;
+    }
+    
+    /* Sidebar */
+    .filter-sidebar {
+        width: 320px;
+        flex-shrink: 0;
+    }
+    
+    .filter-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-xl);
+        padding: 1.5rem;
+        position: sticky;
+        top: calc(var(--header-height, 60px) + 20px);
+    }
+    
+    .filter-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        font-family: var(--font-heading);
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+    
+    .filter-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .filter-label {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-primary);
+        margin-bottom: 0.75rem;
+        cursor: pointer;
+    }
+    
+    .filter-input-wrap {
+        position: relative;
+    }
+    
+    .filter-input-wrap .material-symbols-outlined {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 18px;
+    }
+    
+    .filter-input {
+        width: 100%;
+        padding: 0.6rem 0.6rem 0.6rem 2.2rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        font-size: 0.9rem;
+        background: var(--bg-surface-dim);
+    }
+    
+    .filter-select {
+        width: 100%;
+        padding: 0.6rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        font-size: 0.9rem;
+        background: var(--bg-surface-dim);
+        appearance: none;
+    }
+    
+    .quiz-box {
+        background: rgba(103,92,245,0.04);
+        border-radius: var(--border-radius-lg);
+        padding: 1.5rem;
+        text-align: center;
+        margin-top: 2rem;
+    }
+    
+    /* Main Content */
+    .main-content {
+        flex-grow: 1;
+        min-width: 0; /* prevents flex blowout */
+    }
+    
+    .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    /* Tutor Cards */
+    .tutor-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+    
+    @media (max-width: 992px) {
+        .tutor-grid { grid-template-columns: 1fr; }
+        .find-tutor-container { flex-direction: column; }
+        .filter-sidebar { width: 100%; }
+        .filter-panel { position: static; }
+    }
+    
+    .t4a-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-xl);
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        transition: var(--transition);
+    }
+    
+    .t4a-card:hover {
+        box-shadow: var(--shadow-md);
+        border-color: rgba(103,92,245,0.3);
+        transform: translateY(-2px);
+    }
+    
+    .t4a-card-header {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .t4a-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        object-fit: cover;
+        background: var(--gradient-accent);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    
+    .verified-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        background: var(--color-success-bg);
+        color: var(--color-success);
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+    
+    .t4a-name {
+        font-family: var(--font-heading);
+        font-weight: 700;
+        font-size: 1.15rem;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    
+    .t4a-subject {
+        color: var(--primary-color);
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    /* Key Value Rows */
+    .t4a-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.75rem;
+        font-size: 0.85rem;
+        align-items: baseline;
+    }
+    
+    .t4a-label {
+        color: var(--text-muted);
+    }
+    
+    .t4a-val {
+        font-weight: 600;
+        color: var(--text-primary);
+        text-align: right;
+        max-width: 60%;
+    }
+    
+    .val-green {
+        color: var(--color-success);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        justify-content: flex-end;
+    }
+    
+    .val-pill {
+        background: var(--bg-surface-dim);
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+    }
+    
+    /* 4D Ratings */
+    .ratings-section {
+        margin-top: 1.5rem;
+        border-top: 1px dashed var(--border-color);
+        padding-top: 1.5rem;
+    }
+    
+    .ratings-title {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+    }
+    
+    .ratings-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    
+    .rating-box {
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        padding: 0.75rem;
+    }
+    
+    .r-label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        margin-bottom: 0.25rem;
+    }
+    
+    .r-val {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    
+    .r-val.star-val { color: var(--text-primary); }
+    .r-val.star-val span { color: #f59e0b; }
+    .r-val.blue-val { color: var(--primary-color); }
+    
+    /* Card Footer */
+    .t4a-card-footer {
+        margin-top: 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    
+    .rate-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
+    
+    .rate-val {
+        font-family: var(--font-heading);
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .rate-val span { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; font-family: var(--font-body); }
+    
+    .btn-book {
+        background: var(--gradient-accent);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius-sm);
+        padding: 0.5rem 1.25rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: var(--transition);
+    }
+    .btn-book:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(103,92,245,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="find-tutor-container">
+        
+        <!-- Left Sidebar (Filters) -->
+        <aside class="filter-sidebar">
+            <div class="filter-panel">
+                <div class="filter-header">
+                    <span>Filter Tutors</span>
+                    <span class="material-symbols-outlined" style="color: var(--primary-color);">filter_list</span>
+                </div>
+                
+                <form method="GET" action="{% url 'core:teachers' %}" id="filterForm">
+                    <!-- Search Keyword -->
+                    <div class="filter-group">
+                        <div class="filter-label">
+                            <span>Search Keyword</span>
+                            <span class="material-symbols-outlined" style="font-size: 16px;">expand_less</span>
+                        </div>
+                        <div class="filter-input-wrap">
+                            <span class="material-symbols-outlined">search</span>
+                            <input type="text" name="q" id="searchInput" class="filter-input" placeholder="Name, credential, subject..." value="{{ search_query|default:'' }}">
+                        </div>
+                    </div>
+                    
+                    <!-- Subject Category -->
+                    <div class="filter-group">
+                        <div class="filter-label">
+                            <span>Subject Category</span>
+                            <span class="material-symbols-outlined" style="font-size: 16px;">expand_less</span>
+                        </div>
+                        <div class="position-relative">
+                            <select class="filter-select" name="category" id="categorySelect">
+                                <option value="">All Subjects</option>
+                                {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if selected_category == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <span class="material-symbols-outlined position-absolute" style="right:10px; top:50%; transform:translateY(-50%); font-size:18px; pointer-events:none; color:var(--text-muted);">expand_more</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Hourly Rate -->
+                    <div class="filter-group">
+                        <div class="filter-label">
+                            <span>Max Hourly Rate</span>
+                            <span class="material-symbols-outlined" style="font-size: 16px;">expand_less</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2" style="font-size: 0.85rem;">
+                            <span style="color: var(--text-muted);">Rate Target</span>
+                            <span style="color: var(--primary-color); font-weight: 700;">₹<span id="rateVal">{{ max_price|default:'2000' }}</span>/hr</span>
+                        </div>
+                        <input type="range" name="max_price" id="rateSlider" class="form-range w-100" min="50" max="2000" step="50" value="{{ max_price|default:'2000' }}" style="accent-color: var(--primary-color);">
+                        <div class="d-flex justify-content-between mt-1" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                            <span>₹50/hr</span>
+                            <span>₹2,000/hr</span>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="d-none">Search</button>
+                </form>
+                
+                <!-- Quiz Box -->
+                <div class="quiz-box">
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Not sure which verified educator aligns best with your academic roadmap?</p>
+                    <button class="btn btn-primary w-100" style="background: var(--gradient-accent); border: none; font-size: 0.85rem;">Tutor Matching Quiz</button>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="results-header">
+                <span id="tutorsCount" style="color: var(--text-secondary); font-size: 0.95rem;">Showing {{ items|length }} result{{ items|length|pluralize }}</span>
+                <div class="d-flex align-items-center gap-2" style="font-size: 0.85rem; color: var(--text-muted);">
+                    <span>Sort by:</span>
+                    <select style="border: none; background: transparent; font-weight: 600; color: var(--text-primary); cursor: pointer; outline: none;">
+                        <option>4D Rating</option>
+                        <option>Highest Rated</option>
+                        <option>Lowest Price</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="resultsWrapper">
+                <div class="tutor-grid">
+                    {% for item in items %}
+                    
+                    {% if mode == 'teachers' %}
+                    <!-- TEACHER MODE CARD -->
+                    <div class="t4a-card">
+                        <div class="t4a-card-header">
+                            {% if item.photo %}
+                            <img src="{{ item.photo.url }}" class="t4a-avatar" alt="{{ item.user.get_full_name }}">
+                            {% else %}
+                            <div class="t4a-avatar">{{ item.user.username|make_list|first|upper }}</div>
+                            {% endif %}
+                            
+                            <div>
+                                {% if item.is_approved %}
+                                <div class="verified-pill">
+                                    <span class="material-symbols-outlined" style="font-size: 10px;">verified</span> Verified
+                                </div>
+                                {% endif %}
+                                <h3 class="t4a-name">{{ item.user.get_full_name|default:item.user.username }}</h3>
+                                <div class="t4a-subject">{{ item.display_subjects|default:"Professional Tutor" }}</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="t4a-row">
+                                <span class="t4a-label">Credentials</span>
+                                <span class="t4a-val">{{ item.qualification|default:"Professional degree" }}</span>
+                            </div>
+                            <div class="t4a-row">
+                                <span class="t4a-label">DBS Registry</span>
+                                <span class="t4a-val val-green">
+                                    <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                    Active Clearance
+                                </span>
+                            </div>
+                            <div class="t4a-row">
+                                <span class="t4a-label">Response Time</span>
+                                <span class="t4a-val val-pill">Under 1 hr</span>
+                            </div>
+                        </div>
+                        
+                        <div class="ratings-section">
+                            <div class="ratings-title">Audited 4D Ratings:</div>
+                            <div class="ratings-grid">
+                                <div class="rating-box">
+                                    <div class="r-label">Effectiveness</div>
+                                    <div class="r-val star-val"><span>★</span> 4.9 / 5</div>
+                                </div>
+                                <div class="rating-box">
+                                    <div class="r-label">Progress</div>
+                                    <div class="r-val blue-val">+16.4% test avg</div>
+                                </div>
+                                <div class="rating-box">
+                                    <div class="r-label">Satisfaction</div>
+                                    <div class="r-val">98% parent approval</div>
+                                </div>
+                                <div class="rating-box">
+                                    <div class="r-label">Reliability</div>
+                                    <div class="r-val">100% on-time</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="t4a-card-footer">
+                            <div>
+                                <div class="rate-label">Starting at</div>
+                                <div class="rate-val">{% if item.computed_hourly_rate %}₹{{ item.computed_hourly_rate|floatformat:0 }}<span>/hr</span>{% else %}<span style="font-size:1.1rem; color:var(--text-muted);">TBD</span>{% endif %}</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'core:public_teacher_profile' item.id %}" class="btn-book" style="background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); text-decoration: none; padding: 0.5rem 0.75rem;"><i class="bi bi-person"></i></a>
+                                {% if request.user.is_authenticated %}
+                                    {% if request.user.role == 'teacher' or request.user.role == 'admin' or item.id in booked_teacher_ids %}
+                                        <a href="{% url 'chat:chat_with' item.user.id %}" class="btn-book" style="background: transparent; color: #17a2b8; border: 1px solid #17a2b8; text-decoration: none; padding: 0.5rem 0.75rem;" title="Chat with Teacher"><i class="bi bi-chat-dots"></i></a>
+                                    {% endif %}
+                                {% endif %}
+                                <button type="button" class="btn-book flex-grow-1" data-bs-toggle="modal" data-bs-target="#bookModal{{ item.id }}">Book Lesson</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% elif mode == 'courses' %}
+                    <!-- COURSE MODE CARD -->
+                    <div class="t4a-card">
+                        <div class="t4a-card-header">
+                            {% if item.teacher.photo %}
+                            <img src="{{ item.teacher.photo.url }}" class="t4a-avatar" alt="{{ item.teacher.user.get_full_name }}">
+                            {% else %}
+                            <div class="t4a-avatar">{{ item.teacher.user.username|make_list|first|upper }}</div>
+                            {% endif %}
+                            
+                            <div>
+                                <div class="verified-pill mb-1" style="background: var(--primary-light); color: var(--primary-color);">
+                                    <span class="material-symbols-outlined" style="font-size: 10px;">category</span> {{ item.category.name }}
+                                </div>
+                                <h3 class="t4a-name" style="font-size: 1.1rem;">{{ item.title }}</h3>
+                                <div class="t4a-subject">by {{ item.teacher.user.get_full_name|default:item.teacher.user.username }}</div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="t4a-row">
+                                <span class="t4a-label">Tutor Credentials</span>
+                                <span class="t4a-val">{{ item.teacher.qualification|default:"Professional degree" }}</span>
+                            </div>
+                            <div class="t4a-row">
+                                <span class="t4a-label">Duration</span>
+                                <span class="t4a-val">{{ item.total_duration_hours }} Hours</span>
+                            </div>
+                            <div class="t4a-row">
+                                <span class="t4a-label">DBS Registry</span>
+                                <span class="t4a-val val-green">
+                                    <span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                    Active Clearance
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="ratings-section">
+                            <div class="ratings-title">Course Overview:</div>
+                            <p class="text-muted small m-0" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;">
+                                {{ item.description|striptags|truncatewords:20|default:"No description provided." }}
+                            </p>
+                        </div>
+                        
+                        <div class="t4a-card-footer mt-auto">
+                            <div>
+                                <div class="rate-label">Hourly Rate</div>
+                                <div class="rate-val">{% if item.get_hourly_rate %}₹{{ item.get_hourly_rate|floatformat:0 }}<span>/hr</span>{% else %}<span style="font-size:1.1rem; color:var(--text-muted);">TBD</span>{% endif %}</div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'core:public_teacher_profile' item.teacher.id %}" class="btn-book text-decoration-none" style="background: transparent; color: var(--primary-color); border: 1px solid var(--primary-color); padding: 0.5rem 0.75rem;"><i class="bi bi-person"></i></a>
+                                {% if request.user.is_authenticated %}
+                                    {% if request.user.role == 'teacher' or request.user.role == 'admin' or item.teacher.id in booked_teacher_ids %}
+                                        <a href="{% url 'chat:chat_with' item.teacher.user.id %}" class="btn-book text-decoration-none" style="background: transparent; color: #17a2b8; border: 1px solid #17a2b8; padding: 0.5rem 0.75rem;" title="Chat with Teacher"><i class="bi bi-chat-dots"></i></a>
+                                    {% endif %}
+                                {% endif %}
+                                <a href="{% url 'courses:detail' item.id %}" class="btn-book text-decoration-none flex-grow-1">Book Lesson</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% empty %}
+                    <div class="col-12 text-center py-5" style="grid-column: 1 / -1;">
+                        <div class="p-5 rounded-4" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                            <span class="material-symbols-outlined d-block mb-3" style="font-size: 3rem; color: var(--border-color);">search_off</span>
+                            <h4 class="brand-font fw-bold" style="color: var(--text-primary);">No results found</h4>
+                            <p style="color: var(--text-muted);">Try adjusting your search criteria or explore our categories.</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- MODALS RENDERED OUTSIDE GRID TO PREVENT Z-INDEX ISSUES -->
+                {% if mode == 'teachers' %}
+                    {% for item in items %}
+                    <div class="modal fade" id="bookModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content rounded-4 border-0 shadow">
+                                <div class="modal-header border-0 pb-0">
+                                    <h5 class="modal-title brand-font fw-bold">Select a Course</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p class="text-muted small mb-4">Choose which of {{ item.user.get_full_name|default:item.user.username }}'s courses you'd like to book:</p>
+                                    <div class="d-flex flex-column gap-3">
+                                        {% for c in item.courses.all %}
+                                            {% if c.status == 'approved' and not c.is_frozen %}
+                                            <div class="p-3 border rounded-3 d-flex justify-content-between align-items-center" style="background: #fdfdfd;">
+                                                <div>
+                                                    <h6 class="mb-1 fw-bold">{{ c.title }}</h6>
+                                                    <div class="text-muted small">
+                                                        {% if c.get_hourly_rate > 0 %}₹{{ c.get_hourly_rate|floatformat:0 }}/hr{% else %}TBD{% endif %}
+                                                        (Total: ₹{{ c.price|floatformat:0 }} for {{ c.total_duration_hours }} hrs) • {{ c.category.name }}
+                                                    </div>
+                                                </div>
+                                                <a href="{% url 'courses:detail' c.id %}" class="btn btn-sm btn-primary rounded-pill px-3">Book</a>
+                                            </div>
+                                            {% endif %}
+                                        {% empty %}
+                                            <div class="text-center text-muted p-3">No active courses available.</div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('filterForm');
+    const searchInput = document.getElementById('searchInput');
+    const categorySelect = document.getElementById('categorySelect');
+    const rateSlider = document.getElementById('rateSlider');
+    const rateVal = document.getElementById('rateVal');
+    const resultsWrapper = document.getElementById('resultsWrapper');
+    const countLabel = document.getElementById('tutorsCount');
+    
+    let timeout = null;
+    
+    function moveModalsToBody() {
+        const modals = document.querySelectorAll('#resultsWrapper .modal');
+        modals.forEach(m => {
+            document.body.appendChild(m);
+        });
+    }
+    
+    // Initial move on page load
+    moveModalsToBody();
+    
+    if (rateSlider && rateVal) {
+        rateSlider.addEventListener('input', function() {
+            rateVal.textContent = this.value;
+        });
+    }
+
+    function fetchResults() {
+        if (!filterForm) return;
+        
+        // Before updating HTML, ensure we close any open modals to remove backdrops!
+        const openModals = document.querySelectorAll('.modal.show');
+        openModals.forEach(m => {
+            const modalInstance = bootstrap.Modal.getInstance(m);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        });
+        // Force cleanup backdrop if bootstrap fails
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Remove orphaned modals that were appended to body
+        const orphanModals = document.querySelectorAll('body > .modal');
+        orphanModals.forEach(m => m.remove());
+        
+        const formData = new FormData(filterForm);
+        const params = new URLSearchParams();
+        for (let pair of formData.entries()) {
+            params.append(pair[0], pair[1]);
+        }
+        
+        const url = `{% url 'core:teachers' %}?${params.toString()}`;
+        window.history.pushState({}, '', url);
+        
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => response.text())
+        .then(html => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const newWrapper = doc.getElementById('resultsWrapper');
+            if (newWrapper && resultsWrapper) {
+                resultsWrapper.innerHTML = newWrapper.innerHTML;
+                moveModalsToBody(); // Move the newly fetched modals to body!
+            }
+            const newCount = doc.getElementById('tutorsCount');
+            if (newCount && countLabel) {
+                countLabel.innerHTML = newCount.innerHTML;
+            }
+        })
+        .catch(error => console.error('Error fetching search results:', error));
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeout);
+            timeout = setTimeout(fetchResults, 400); 
+        });
+    }
+    
+    if (categorySelect) {
+        categorySelect.addEventListener('change', fetchResults);
+    }
+    
+    if (rateSlider) {
+        rateSlider.addEventListener('change', fetchResults);
+    }
+});
+</script>
+{% endblock %}

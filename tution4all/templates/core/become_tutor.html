@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Become a Tutor - Tuition4All{% endblock %}
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <div class="pill-badge mb-3">
+                    <span class="rounded-circle d-inline-block" style="width: 8px; height: 8px; background: var(--primary-color); animation: pulse 2s infinite;"></span>
+                    For Tutors
+                </div>
+                <h1 class="brand-font" style="font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.1; color: var(--text-primary); letter-spacing: -0.02em; margin-bottom: 1.5rem;">
+                    Turn Your Passion Into a Professional Legacy
+                </h1>
+                <p style="font-size: 1.05rem; color: var(--text-secondary); max-width: 36rem; line-height: 1.7; margin-bottom: 2rem;">
+                    Great mentors shape the future. On Tuition4All, your dedication translates directly into a certified track record of academic success. Build a prestigious, independent reputation and attract students who value genuine mastery.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{% url 'accounts:register' %}?role=teacher" class="btn btn-primary px-4 py-3 rounded-3 fw-bold shadow" style="background: var(--gradient-accent); border: none;">Apply to Teach</a>
+                    <a href="{% url 'core:how_it_works' %}" class="btn px-4 py-3 rounded-3 fw-bold" style="background: white; border: 1px solid var(--border-color); color: var(--text-primary);">See How It Works</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="rounded-4 overflow-hidden position-relative" style="border: 1px solid rgba(103,92,245,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.06); aspect-ratio: 4/3;">
+                    <img src="{% static 'images/mission_secondary.jpg' %}" alt="Passionate educator" class="w-100 h-100" style="object-fit: cover;">
+                    <div class="position-absolute bottom-0 start-0 end-0 p-4" style="background: linear-gradient(transparent, rgba(0,0,0,0.6));">
+                        <div class="d-flex align-items-center gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(12px);">
+                            <div class="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 40px; height: 40px; background: rgba(46,125,50,0.1); color: #2e7d32;">
+                                <span class="material-symbols-outlined" style="font-size: 20px;">verified</span>
+                            </div>
+                            <div>
+                                <h6 class="mb-0 fw-bold" style="font-size: 0.875rem; color: var(--text-primary);">Verified Tutor Program</h6>
+                                <p class="mb-0" style="font-size: 0.75rem; color: var(--text-muted);">Credential-verified educators only</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Benefits Grid -->
+<section class="py-5" style="background: var(--bg-color); border-top: 1px solid var(--border-color);">
+    <div class="container">
+        <div class="text-center mb-5">
+            <span class="pill-badge mx-auto mb-2">Why Tutors Stay</span>
+            <h2 class="brand-font fw-bold" style="font-size: 1.5rem; color: var(--text-primary);">Because Your Results Finally Speak for You</h2>
+            <p style="color: var(--text-secondary); max-width: 36rem; margin: 0.5rem auto 0;">No cold outreach. No competing on price. Just a system where doing great work is the whole strategy.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="process-card h-100" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: var(--border-radius-3xl); transition: var(--transition);">
+                    <div style="width: 100%; aspect-ratio: 4/3; border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 12px 24px rgba(0,0,0,0.03); background: var(--bg-surface-dim);">
+                        <img src="{% static 'images/rating_ecosystem.jpg' %}" alt="Earnings" class="w-100 h-100" style="object-fit: cover;">
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 36px; height: 36px; background: var(--amber-50); color: var(--amber-600); border: 1px solid rgba(245,158,11,0.1);">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">payments</span>
+                        </div>
+                        <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--text-primary);">The Pay You Deserve</h5>
+                    </div>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">Set your own rates and earn directly. No hidden deductions — just fair compensation for quality teaching.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="process-card h-100" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: var(--border-radius-3xl); transition: var(--transition);">
+                    <div style="width: 100%; aspect-ratio: 4/3; border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 12px 24px rgba(0,0,0,0.03); background: var(--bg-surface-dim);">
+                        <img src="{% static 'images/rating_monitoring.jpg' %}" alt="Verified Badge" class="w-100 h-100" style="object-fit: cover;">
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 36px; height: 36px; background: var(--emerald-50); color: var(--emerald-600); border: 1px solid rgba(16,185,129,0.1);">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">verified_user</span>
+                        </div>
+                        <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--text-primary);">Verified Tutor Badge</h5>
+                    </div>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">Pass credential verification once, and every parent can see it — no re-proving yourself per client.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="process-card h-100" style="background: var(--bg-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: var(--border-radius-3xl); transition: var(--transition);">
+                    <div style="width: 100%; aspect-ratio: 4/3; border-radius: var(--border-radius-lg); overflow: hidden; margin-bottom: 1.5rem; box-shadow: 0 12px 24px rgba(0,0,0,0.03); background: var(--bg-surface-dim);">
+                        <img src="{% static 'images/student_photo.jpg' %}" alt="Student demand" class="w-100 h-100" style="object-fit: cover; object-position: center 30%;">
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="d-flex align-items-center justify-content-center rounded-3" style="width: 36px; height: 36px; background: var(--violet-50); color: var(--violet-600); border: 1px solid rgba(139,92,246,0.1);">
+                            <span class="material-symbols-outlined" style="font-size: 20px;">ads_click</span>
+                        </div>
+                        <h5 class="mb-0 fw-bold" style="font-size: 1.1rem; color: var(--text-primary);">Inbound Student Demand</h5>
+                    </div>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); line-height: 1.6;">Stop cold-messaging parents. Our platform puts you in front of students already looking for exactly what you teach.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center p-5 rounded-4" style="background: var(--bg-color); border: 1px solid var(--border-color);">
+            <h2 class="brand-font fw-bold mb-3" style="font-size: 1.75rem; color: var(--text-primary);">Ready to start teaching?</h2>
+            <p class="mb-4 mx-auto" style="color: var(--text-secondary); max-width: 32rem;">Join our growing network of verified educators and start making a difference in students' lives.</p>
+            <a href="{% url 'accounts:register' %}" class="btn btn-primary btn-lg px-5 py-3 rounded-3 fw-bold shadow" style="background: var(--gradient-accent); border: none;">
+                Register as a Tutor <span class="material-symbols-outlined ms-1" style="font-size: 18px; vertical-align: middle;">arrow_forward</span>
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

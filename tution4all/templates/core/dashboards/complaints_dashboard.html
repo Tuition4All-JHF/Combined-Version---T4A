@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Complaints & Issues | Tuition4All{% endblock %}
+
+{% block content %}
+<div class="container py-5 mt-5">
+    <!-- Header Section -->
+    <div class="row mb-5 align-items-center">
+        <div class="col-md-8">
+            <h1 class="display-5 fw-bold text-dark mb-2">Complaints & Issues</h1>
+            <p class="text-muted fs-5 mb-0">View class-related complaints and issues</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0 d-flex justify-content-md-end gap-2">
+            <a href="{% url 'core:dashboard' %}" class="btn btn-outline-primary rounded-pill px-4 py-2 fw-semibold">
+                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+            </a>
+            {% if request.user.role == 'teacher' %}
+            <button type="button" class="btn btn-danger rounded-pill px-4 py-2 fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#reportIssueModal">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> Report Issue
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Content Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="py-3 px-4 text-muted fw-semibold">Date</th>
+                                    <th class="py-3 px-4 text-muted fw-semibold">Course</th>
+                                    <th class="py-3 px-4 text-muted fw-semibold">Student / Parent</th>
+                                    <th class="py-3 px-4 text-muted fw-semibold">Teacher</th>
+                                    <th class="py-3 px-4 text-muted fw-semibold">Issue Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for complaint in complaints %}
+                                <tr>
+                                    <td class="py-4 px-4 text-nowrap">
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-danger bg-opacity-10 text-danger rounded-circle p-2 me-3">
+                                                <i class="bi bi-exclamation-triangle"></i>
+                                            </div>
+                                            <div>
+                                                <span class="d-block fw-bold text-dark">{{ complaint.created_at|date:"M d, Y" }}</span>
+                                                <small class="text-muted">{{ complaint.created_at|time:"h:i A" }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <span class="d-block fw-bold text-primary">{{ complaint.course.title }}</span>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <span class="d-block fw-bold text-dark">
+                                            <i class="bi bi-person-badge text-muted me-1"></i> {{ complaint.student.get_full_name|default:complaint.student.username }}
+                                        </span>
+                                        {% if complaint.parent %}
+                                        <small class="text-muted d-block">
+                                            <i class="bi bi-person-hearts text-primary me-1"></i> {{ complaint.parent.get_full_name|default:complaint.parent.username }}
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <div class="d-flex align-items-center">
+                                            {% if complaint.teacher.photo %}
+                                            <img src="{{ complaint.teacher.photo.url }}" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover;">
+                                            {% else %}
+                                            <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center me-2 text-white" style="width: 32px; height: 32px;">
+                                                <i class="bi bi-person"></i>
+                                            </div>
+                                            {% endif %}
+                                            <span class="fw-semibold text-dark">{{ complaint.teacher.user.get_full_name|default:complaint.teacher.user.username }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-4">
+                                        <p class="mb-0 text-dark" style="white-space: pre-wrap;">{{ complaint.description }}</p>
+                                        {% if complaint.file %}
+                                        <a href="{{ complaint.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary mt-2 rounded-pill">
+                                            <i class="bi bi-paperclip me-1"></i>View Attachment
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="py-5 text-center text-muted">
+                                        <div class="mb-3">
+                                            <i class="bi bi-check-circle text-success fs-1"></i>
+                                        </div>
+                                        <h5 class="fw-bold">No Complaints Found</h5>
+                                        <p class="mb-0">Everything seems to be running smoothly.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if request.user.role == 'teacher' %}
+<!-- Report Issue Modal -->
+<div class="modal fade" id="reportIssueModal" tabindex="-1" aria-labelledby="reportIssueModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+            <div class="modal-header bg-danger text-white border-0 py-3 px-4">
+                <h5 class="modal-title fw-bold" id="reportIssueModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i> Report New Issue</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{% url 'core:complaints' %}" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4 bg-light">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Select Course</label>
+                            <select name="course_id" id="course_select" class="form-select border-0 shadow-sm" required>
+                                <option value="" disabled selected>Choose a course...</option>
+                                {% for c in teacher_courses %}
+                                <option value="{{ c.id }}">{{ c.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Select Student</label>
+                            <select name="student_id" id="student_select" class="form-select border-0 shadow-sm" required disabled>
+                                <option value="" disabled selected>Select course first...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Linked Parent</label>
+                            <input type="text" id="parent_name_display" class="form-control border-0 shadow-sm" readonly placeholder="Auto-fills upon student selection">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Visibility (Who should see this?)</label>
+                        <select name="visibility" class="form-select border-0 shadow-sm" required>
+                            <option value="student_parent" selected>Student & Parent</option>
+                            <option value="parent_only">Parent Only</option>
+                            <option value="admin_only">Admin Only (Keep Hidden from Student/Parent)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Issue Description</label>
+                        <textarea name="description" class="form-control border-0 shadow-sm" rows="4" placeholder="Describe the issue in detail..." required></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Attachment (Optional)</label>
+                        <input type="file" name="file" class="form-control border-0 shadow-sm">
+                    </div>
+
+                </div>
+                <div class="modal-footer border-0 p-4 bg-white">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4 fw-bold shadow-sm">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const courseSelect = document.getElementById('course_select');
+    const studentSelect = document.getElementById('student_select');
+    const parentDisplay = document.getElementById('parent_name_display');
+    
+    let studentsCache = {}; // Cache to store parent names
+
+    courseSelect.addEventListener('change', function() {
+        const courseId = this.value;
+        studentSelect.innerHTML = '<option value="" disabled selected>Loading students...</option>';
+        studentSelect.disabled = true;
+        parentDisplay.value = '';
+        studentsCache = {};
+
+        if (courseId) {
+            fetch(`/api/get-students-for-course/?course_id=${courseId}`)
+                .then(response => response.json())
+                .then(data => {
+                    studentSelect.innerHTML = '<option value="" disabled selected>Choose a student...</option>';
+                    if (data.students && data.students.length > 0) {
+                        data.students.forEach(student => {
+                            const option = document.createElement('option');
+                            option.value = student.id;
+                            option.textContent = student.name;
+                            studentSelect.appendChild(option);
+                            studentsCache[student.id] = student.parent_name;
+                        });
+                        studentSelect.disabled = false;
+                    } else {
+                        studentSelect.innerHTML = '<option value="" disabled selected>No students enrolled</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching students:', error);
+                    studentSelect.innerHTML = '<option value="" disabled selected>Error loading students</option>';
+                });
+        }
+    });
+
+    studentSelect.addEventListener('change', function() {
+        const studentId = this.value;
+        if (studentsCache[studentId]) {
+            parentDisplay.value = studentsCache[studentId];
+        } else {
+            parentDisplay.value = 'Not Available';
+        }
+    });
+});
+</script>
+{% endif %}
+
+{% endblock %}

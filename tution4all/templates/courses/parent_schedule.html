@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Children's Schedule - Tuition4All{% endblock %}
+
+{% block extra_css %}
+<style>
+    .package-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        border-color: #0d6efd !important;
+    }
+    .select-indicator {
+        transition: 0.2s;
+    }
+    .package-card:hover .select-indicator {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-people-fill text-primary me-2"></i> My Children's Schedule</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <!-- Child Selector -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-4">
+            <div class="row align-items-center">
+                <div class="col-md-3">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-person-badge text-info me-2"></i>Select Child</h5>
+                </div>
+                <div class="col-md-5">
+                    <select id="childSelect" class="form-select rounded-pill shadow-sm border-0 bg-light">
+                        <option value="all">-- All Children --</option>
+                        {% for child in children %}
+                            <option value="{{ child.id }}">{{ child.user.get_full_name|default:child.user.username }} (ID: {{ child.student_id }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-4" id="bookedSessionsSubTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4 me-2 fw-bold" id="booked-upcoming-sub-tab" data-bs-toggle="pill" data-bs-target="#booked-upcoming-sub" type="button" role="tab" aria-controls="booked-upcoming-sub" aria-selected="true">
+                Ongoing Packages
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4 fw-bold" id="booked-ended-sub-tab" data-bs-toggle="pill" data-bs-target="#booked-ended-sub" type="button" role="tab" aria-controls="booked-ended-sub" aria-selected="false">
+                Ended Packages
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="bookedSessionsSubTabsContent">
+        <!-- Ongoing Sessions -->
+        <div class="tab-pane fade show active" id="booked-upcoming-sub" role="tabpanel" aria-labelledby="booked-upcoming-sub-tab">
+            <div class="row" id="upcoming-packages-container">
+                {% for pkg in upcoming_packages %}
+                <div class="col-md-6 mb-4 booked-session-card" data-student-id="{{ pkg.student.id }}">
+                    <div class="card package-card h-100 shadow-sm border border-2 border-transparent" onclick="openPackageModal('{{ pkg.group_id }}')" style="cursor: pointer; transition: 0.2s; border-radius: 16px;">
+                        <div class="card-body p-4">
+                            <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill mb-2 px-3 py-1">Child: {{ pkg.student.user.get_full_name|default:pkg.student.user.username }}</span>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold text-dark mb-0">{{ pkg.title }}</h5>
+                                {% if pkg.class_type == 'public' %}
+                                    <span class="badge bg-light text-dark rounded-pill border px-3 py-2"><i class="bi bi-people-fill me-1 text-info"></i> Public</span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark rounded-pill border px-3 py-2"><i class="bi bi-person-fill me-1 text-primary"></i> Private</span>
+                                {% endif %}
+                            </div>
+                            
+                            <p class="text-muted small mb-3"><i class="bi bi-book-half me-1"></i> Course: <strong>{{ pkg.course.title }}</strong></p>
+                            
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-alarm text-danger me-2 fs-5"></i>
+                                <span class="fw-bold text-secondary">
+                                    {% if pkg.start_time %}{{ pkg.start_time|time:"h:i A" }} - {{ pkg.end_time|time:"h:i A" }}{% endif %}
+                                </span>
+                            </div>
+                            
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-arrow-repeat me-2 fs-5" style="color: #f39c12;"></i>
+                                <span class="fw-bold" style="color: #f39c12;">
+                                    {{ pkg.days_str }}
+                                    <span class="text-muted fw-normal ms-1">({{ pkg.total_classes }} classes)</span>
+                                </span>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <span class="btn btn-outline-primary rounded-pill fw-bold select-indicator w-100 py-2">View Classes</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden JSON data for this package -->
+                <script type="application/json" id="pkg-data-{{ pkg.group_id }}">
+                [
+                    {% for b in pkg.bookings %}
+                    {
+                        "title": "{{ b.live_class.title|escapejs }}",
+                        "date": "{{ b.live_class.start_time|date:'M d, Y' }}",
+                        "time": "{{ b.live_class.start_time|time:'h:i A' }} - {{ b.live_class.end_time|time:'h:i A' }}",
+                        "is_ended": {% if b.live_class.has_ended %}true{% else %}false{% endif %},
+                        "transcript_url": "{% url 'courses:view_class_transcript' b.live_class.id %}"
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+                </script>
+                {% empty %}
+                <div class="col-12" id="no-ongoing-sessions">
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-5 text-center text-muted">
+                            <i class="bi bi-bookmark-x fs-1 d-block mb-3"></i>
+                            <h4>No Ongoing Packages</h4>
+                            <p class="mb-0">Your children have not booked any upcoming live classes.</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Ended Sessions -->
+        <div class="tab-pane fade" id="booked-ended-sub" role="tabpanel" aria-labelledby="booked-ended-sub-tab">
+            <div class="row" id="ended-packages-container">
+                {% for pkg in ended_packages %}
+                <div class="col-md-6 mb-4 booked-session-card" data-student-id="{{ pkg.student.id }}">
+                    <div class="card package-card h-100 shadow-sm border border-2 border-transparent" onclick="openPackageModal('{{ pkg.group_id }}')" style="cursor: pointer; transition: 0.2s; border-radius: 16px; background-color: #f8f9fa;">
+                        <div class="card-body p-4 opacity-75">
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill mb-2 px-3 py-1">Child: {{ pkg.student.user.get_full_name|default:pkg.student.user.username }}</span>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="fw-bold text-muted mb-0">{{ pkg.title }}</h5>
+                                <span class="badge bg-secondary rounded-pill border px-3 py-2"><i class="bi bi-check-circle-fill me-1"></i> Ended</span>
+                            </div>
+                            
+                            <p class="text-muted small mb-3"><i class="bi bi-book-half me-1"></i> Course: <strong>{{ pkg.course.title }}</strong></p>
+                            
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-alarm text-secondary me-2 fs-5"></i>
+                                <span class="fw-bold text-secondary">
+                                    {% if pkg.start_time %}{{ pkg.start_time|time:"h:i A" }} - {{ pkg.end_time|time:"h:i A" }}{% endif %}
+                                </span>
+                            </div>
+                            
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="bi bi-arrow-repeat me-2 fs-5" style="color: #6c757d;"></i>
+                                <span class="fw-bold" style="color: #6c757d;">
+                                    {{ pkg.days_str }}
+                                    <span class="text-muted fw-normal ms-1">({{ pkg.total_classes }} classes)</span>
+                                </span>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <span class="btn btn-outline-secondary rounded-pill fw-bold select-indicator w-100 py-2">View Classes & Transcripts</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hidden JSON data for this package -->
+                <script type="application/json" id="pkg-data-{{ pkg.group_id }}">
+                [
+                    {% for b in pkg.bookings %}
+                    {
+                        "title": "{{ b.live_class.title|escapejs }}",
+                        "date": "{{ b.live_class.start_time|date:'M d, Y' }}",
+                        "time": "{{ b.live_class.start_time|time:'h:i A' }} - {{ b.live_class.end_time|time:'h:i A' }}",
+                        "is_ended": {% if b.live_class.has_ended %}true{% else %}false{% endif %},
+                        "transcript_url": "{% url 'courses:view_class_transcript' b.live_class.id %}"
+                    }{% if not forloop.last %},{% endif %}
+                    {% endfor %}
+                ]
+                </script>
+                {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-light border rounded-4 text-center p-4">
+                        <i class="bi bi-calendar-x text-muted fs-1 mb-2"></i>
+                        <p class="mb-0 text-muted">No ended packages found.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Package Details Modal -->
+<div class="modal fade" id="packageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="bi bi-layers me-2"></i>Package Classes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 pt-2">
+                <p class="text-muted small mb-4">Here are all the individual classes for this package.</p>
+                <div class="list-group list-group-flush" id="package-classes-list">
+                    <!-- Javascript will populate this -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openPackageModal(groupId) {
+        const dataEl = document.getElementById('pkg-data-' + groupId);
+        if (!dataEl) return;
+        
+        const classes = JSON.parse(dataEl.textContent);
+        const listEl = document.getElementById('package-classes-list');
+        listEl.innerHTML = '';
+        
+        classes.forEach(c => {
+            let actionHtml = '';
+            if (c.is_ended) {
+                actionHtml = `<a href="${c.transcript_url}" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> Transcript & Summary</a>`;
+            } else {
+                actionHtml = `<span class="badge bg-warning text-dark rounded-pill"><i class="bi bi-clock-history me-1"></i> Upcoming</span>`;
+            }
+            
+            const html = `
+                <div class="list-group-item px-0 py-3 border-bottom-0 mb-2 rounded-3 bg-light" style="padding-left: 15px !important; padding-right: 15px !important;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold mb-1">${c.title}</h6>
+                            <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-1"></i>${c.date} <i class="bi bi-clock ms-2 me-1"></i>${c.time}</p>
+                        </div>
+                        <div>
+                            ${actionHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+            listEl.insertAdjacentHTML('beforeend', html);
+        });
+        
+        var myModal = new bootstrap.Modal(document.getElementById('packageModal'));
+        myModal.show();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const childSelect = document.getElementById('childSelect');
+        const cards = document.querySelectorAll('.booked-session-card');
+        
+        childSelect.addEventListener('change', function() {
+            const studentId = this.value;
+            cards.forEach(card => {
+                if (studentId === 'all' || card.getAttribute('data-student-id') === studentId) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

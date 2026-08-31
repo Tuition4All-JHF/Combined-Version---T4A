@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm rounded-4">
+                <div class="card-body p-5">
+                    <h3 class="fw-bold mb-4">Class Summary</h3>
+                    <p class="text-muted mb-4">Add summary notes and files for this completed session. You can manage permissions for each note.</p>
+                    
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div id="notes-container">
+                            <!-- Note Block -->
+                            <div class="note-block p-4 bg-light rounded-4 mb-3 border position-relative">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Note Content</label>
+                                    <textarea name="note_content[]" class="form-control" rows="3" placeholder="Enter summary notes..."></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-12 mb-3 mb-md-0">
+                                        <label class="form-label fw-bold">Attachment (Optional)</label>
+                                        <input type="file" name="note_file[]" class="form-control">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 mt-2 me-2 d-none remove-note-btn">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 text-center">
+                            <button type="button" class="btn btn-outline-primary rounded-pill px-4" id="add-note-btn">
+                                <i class="bi bi-plus-lg me-2"></i>Add Another Note
+                            </button>
+                        </div>
+                        
+
+
+                        <div class="d-grid mt-5">
+                            <button type="submit" class="btn btn-primary rounded-pill py-3 fw-bold fs-5 shadow-sm">Save Summary & Finish</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleSettings(id, isVisible) {
+        const el = document.getElementById(id);
+        if (isVisible) {
+            el.classList.remove('d-none');
+        } else {
+            el.classList.add('d-none');
+        }
+    }
+
+    function toggleSpecificStudents(type, show) {
+        const container = document.getElementById(`specificStudentsContainer_${type}`);
+        if (show) {
+            container.classList.remove('d-none');
+            // Select booked student automatically if it's a private class
+            {% if live_class.class_type == 'private' %}
+                const select = container.querySelector('select');
+                {% for attendance in live_class.attendances.all %}
+                    Array.from(select.options).forEach(opt => {
+                        if (opt.value === "{{ attendance.student.id }}") {
+                            opt.selected = true;
+                        }
+                    });
+                {% endfor %}
+            {% endif %}
+        } else {
+            container.classList.add('d-none');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('notes-container');
+        const addBtn = document.getElementById('add-note-btn');
+
+        addBtn.addEventListener('click', () => {
+            const firstBlock = container.querySelector('.note-block');
+            const clone = firstBlock.cloneNode(true);
+            
+            // Reset values
+            clone.querySelector('textarea').value = '';
+            clone.querySelector('input[type="file"]').value = '';
+            // Reset selects if any (though we removed note_type)
+            const selects = clone.querySelectorAll('select');
+            selects.forEach(s => {
+                s.selectedIndex = 0;
+            });
+            
+            // Show remove button
+            const removeBtn = clone.querySelector('.remove-note-btn');
+            removeBtn.classList.remove('d-none');
+            
+            removeBtn.addEventListener('click', () => {
+                clone.remove();
+            });
+            
+            container.appendChild(clone);
+        });
+    });
+</script>
+{% endblock %}

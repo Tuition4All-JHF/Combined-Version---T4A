@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Whiteboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html {
+            width: 100%; height: 100%; overflow: hidden;
+            background: #f0f0f0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* ── MAIN TOOLBAR (Teacher only) ── */
+        #toolbar {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 8px 12px;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            display: flex;
+            gap: 6px;
+            z-index: 100;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 96vw;
+        }
+        .tool-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 17px; padding: 7px 10px;
+            border-radius: 8px; transition: all 0.18s; color: #333;
+            display: flex; align-items: center; gap: 4px; white-space: nowrap;
+        }
+        .tool-btn:hover { background: #f0f0f0; }
+        .tool-btn.active { background: #e0e7ff; color: #4338ca; font-weight: 600; }
+        .tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .sep { width: 1px; height: 24px; background: #e5e7eb; margin: 0 3px; }
+        .color-group { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: #888; gap: 2px; }
+        input[type="color"] { border: none; width: 28px; height: 28px; padding: 0; cursor: pointer; border-radius: 5px; background: transparent; }
+        input[type="range"] { width: 72px; cursor: pointer; }
+
+        /* ── SHAPES DROPDOWN ── */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-menu {
+            display: none; position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+            background: white; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            z-index: 200; padding: 10px;
+            width: 220px;
+        }
+        .dropdown-menu.show { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .shape-btn {
+            background: #f9fafb; border: 1px solid #e5e7eb;
+            border-radius: 8px; font-size: 22px; padding: 8px 4px;
+            cursor: pointer; text-align: center; transition: 0.15s;
+        }
+        .shape-btn:hover { background: #e0e7ff; border-color: #c7d2fe; }
+
+        /* ── CANVAS ── */
+        .canvas-container { width: 100% !important; height: 100% !important; }
+        canvas { width: 100% !important; height: 100% !important; }
+
+        /* ── FLOATING SETTINGS BUTTON ── */
+        #settings-btn {
+            position: absolute; top: 14px; right: 14px; z-index: 150;
+            background: white; border: none; cursor: pointer;
+            width: 40px; height: 40px; border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+            font-size: 20px; display: flex; align-items: center; justify-content: center;
+            transition: 0.2s;
+        }
+        #settings-btn:hover { background: #f3f4f6; transform: rotate(20deg); }
+
+        /* ── MODAL OVERLAY ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45); z-index: 500;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: white; border-radius: 18px;
+            width: 90%; max-width: 400px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .modal-header {
+            background: #4338ca; color: white;
+            padding: 18px 22px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h3 { font-size: 16px; font-weight: 600; }
+        .modal-close-btn {
+            background: rgba(255,255,255,0.2); border: none; color: white;
+            width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+            font-size: 16px; display: flex; align-items: center; justify-content: center;
+        }
+        .modal-body { padding: 20px 22px; }
+
+        /* ── STUDENT SETTINGS MODAL ── */
+        #student-modal .request-btn {
+            width: 100%; padding: 14px; border: none; border-radius: 10px;
+            background: #fef3c7; color: #d97706;
+            font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        #student-modal .request-btn:hover { background: #fde68a; }
+        #student-modal .request-btn:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+        .student-status-msg { text-align: center; font-size: 13px; color: #6b7280; margin-top: 12px; }
+
+        /* ── TUTOR SETTINGS MODAL ── */
+        .participant-list { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; }
+        .participant-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; background: #f9fafb; border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+        .participant-name { font-size: 14px; font-weight: 500; color: #1f2937; }
+        .participant-badge {
+            font-size: 11px; padding: 2px 8px; border-radius: 20px;
+            font-weight: 600;
+        }
+        .badge-pending { background: #fef9c3; color: #854d0e; }
+        .badge-allowed { background: #dcfce7; color: #166534; }
+        .badge-viewing { background: #f0f4ff; color: #4338ca; }
+        .participant-actions { display: flex; gap: 6px; }
+        .action-btn {
+            border: none; border-radius: 6px; padding: 5px 10px;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.15s;
+        }
+        .btn-accept { background: #dcfce7; color: #166534; }
+        .btn-accept:hover { background: #bbf7d0; }
+        .btn-reject { background: #fee2e2; color: #b91c1c; }
+        .btn-reject:hover { background: #fecaca; }
+        .btn-revoke { background: #fef3c7; color: #d97706; }
+        .btn-revoke:hover { background: #fde68a; }
+        .no-participants { text-align: center; color: #9ca3af; font-size: 14px; padding: 20px 0; }
+
+        /* ── TOAST ── */
+        #toast {
+            position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+            background: rgba(17,24,39,0.85); color: white;
+            padding: 10px 22px; border-radius: 25px; font-size: 14px;
+            z-index: 300; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            backdrop-filter: blur(4px); white-space: nowrap;
+        }
+
+        /* ── STUDENT VIEW OVERLAY (when toolbar hidden) ── */
+        #student-view-info {
+            position: absolute; top: 14px; left: 14px; z-index: 100;
+            background: rgba(255,255,255,0.9); padding: 6px 12px;
+            border-radius: 8px; font-size: 12px; color: #6b7280;
+            backdrop-filter: blur(4px);
+        }
+    
+        /* ── MOBILE RESPONSIVENESS ── */
+        @media (max-width: 768px) {
+            #toolbar {
+                top: auto; bottom: 80px;
+                width: 95vw; overflow-x: auto;
+                flex-wrap: nowrap; justify-content: flex-start;
+            }
+        }
+        @media (max-width: 600px) {
+            #toolbar { top: auto; bottom: 12px; border-radius: 20px; padding: 4px 8px; }
+            .tool-btn { font-size: 14px; padding: 4px 6px; }
+            .color-group { display: none; }
+            #zoom-controls { bottom: 140px !important; }
+        }
+        
+        #zoom-controls {
+            position: absolute; bottom: 20px; right: 20px; z-index: 100;
+            display: flex; flex-direction: column; gap: 8px;
+            background: white; padding: 6px; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- ─── Main Drawing Toolbar (Teacher or Permitted Student) ─── -->
+<div id="toolbar" style="display: none;">
+    <button class="tool-btn" id="btn-select" onclick="setMode('select')" title="Select & Move">👆</button>
+    <button class="tool-btn active" id="btn-draw" onclick="setMode('draw')" title="Draw">✏️</button>
+    <button class="tool-btn" id="btn-erase" onclick="setMode('erase')" title="Erase">🧽</button>
+    <button class="tool-btn" onclick="addText()" title="Add Text">🔤</button>
+
+    <div class="sep"></div>
+
+    <!-- Shapes dropdown -->
+    <div class="dropdown">
+        <button class="tool-btn" onclick="toggleShapes(event)">📐 Shapes ▾</button>
+        <div class="dropdown-menu" id="shapes-menu">
+            <button class="shape-btn" onclick="addShape('rect')" title="Rectangle">▭</button>
+            <button class="shape-btn" onclick="addShape('square')" title="Square">◻</button>
+            <button class="shape-btn" onclick="addShape('circle')" title="Circle">◯</button>
+            <button class="shape-btn" onclick="addShape('ellipse')" title="Ellipse">⬭</button>
+            <button class="shape-btn" onclick="addShape('triangle')" title="Triangle">△</button>
+            <button class="shape-btn" onclick="addShape('right-triangle')" title="Right Triangle">⊿</button>
+            <button class="shape-btn" onclick="addShape('diamond')" title="Diamond">◇</button>
+            <button class="shape-btn" onclick="addShape('parallelogram')" title="Parallelogram">▱</button>
+            <button class="shape-btn" onclick="addShape('trapezoid')" title="Trapezoid">⏢</button>
+            <button class="shape-btn" onclick="addShape('pentagon')" title="Pentagon">⬠</button>
+            <button class="shape-btn" onclick="addShape('hexagon')" title="Hexagon">⬡</button>
+            <button class="shape-btn" onclick="addShape('octagon')" title="Octagon">⯃</button>
+            <button class="shape-btn" onclick="addShape('star')" title="Star">☆</button>
+            <button class="shape-btn" onclick="addShape('cross')" title="Cross">✚</button>
+            <button class="shape-btn" onclick="addShape('arrow-right')" title="Arrow →">➡</button>
+            <button class="shape-btn" onclick="addShape('arrow-left')" title="Arrow ←">⬅</button>
+            <button class="shape-btn" onclick="addShape('arrow-up')" title="Arrow ↑">⬆</button>
+            <button class="shape-btn" onclick="addShape('arrow-down')" title="Arrow ↓">⬇</button>
+            <button class="shape-btn" onclick="addShape('line')" title="Line">➖</button>
+            <button class="shape-btn" onclick="addShape('axes')" title="X-Y Axes">📊</button>
+        </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <div class="color-group">
+        Stroke
+        <input type="color" id="stroke-color" value="#000000" onchange="updateStyles()">
+    </div>
+    <div class="color-group">
+        Fill
+        <input type="color" id="fill-color" value="#ffffff" onchange="updateStyles()">
+    </div>
+    <div class="color-group" style="width:90px;">
+        Size (<span id="brush-size-val">5</span>)
+        <input type="range" id="brush-size" min="1" max="50" value="5" oninput="updateStyles()">
+    </div>
+
+    <div class="sep"></div>
+
+    <input type="file" id="image-upload" style="display:none;" accept="image/*" onchange="uploadImage(event)">
+    <button class="tool-btn" onclick="document.getElementById('image-upload').click()" title="Upload Image">🖼️</button>
+
+    <div class="sep"></div>
+
+    <button class="tool-btn" onclick="undo()" title="Undo (Ctrl+Z)">↩️</button>
+    <button class="tool-btn" onclick="redo()" title="Redo (Ctrl+Y)">↪️</button>
+
+    <div class="sep"></div>
+
+    <button class="tool-btn" style="color:#dc2626;" onclick="deleteSelected()" title="Delete Selected">✂️</button>
+    <button class="tool-btn" style="color:#dc2626;" onclick="clearBoard()" title="Clear Board">🗑️</button>
+</div>
+
+<!-- Student view info banner -->
+<div id="student-view-info" style="display: none;">👁️ View Only</div>
+
+<!-- Floating Settings Cog -->
+<button id="settings-btn" onclick="openSettings()" title="Settings">⚙️</button>
+
+<!-- ─── STUDENT SETTINGS MODAL ─── -->
+<div class="modal-overlay" id="student-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>⚙️ Whiteboard Settings</h3>
+            <button class="modal-close-btn" onclick="closeModal('student-modal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:#6b7280;margin-bottom:16px;">You are currently in <strong>View Only</strong> mode. You can request permission from the tutor to draw on this whiteboard.</p>
+            <button class="request-btn" id="request-draw-btn" onclick="requestDrawPermission()">✋ Request Permission to Draw</button>
+            <p class="student-status-msg" id="request-status-msg"></p>
+        </div>
+    </div>
+</div>
+
+<!-- ─── TUTOR SETTINGS MODAL ─── -->
+<div class="modal-overlay" id="tutor-modal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>⚙️ Whiteboard Settings</h3>
+            <button class="modal-close-btn" onclick="closeModal('tutor-modal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:13px;color:#6b7280;margin-bottom:14px;font-weight:500;">Student Permissions</p>
+            <div class="participant-list" id="participant-list">
+                <div class="no-participants" id="no-participants-msg">No students have joined yet.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+
+<!-- Zoom Controls -->
+<div id="zoom-controls">
+    <button class="tool-btn" onclick="changeZoom(1.2)" title="Zoom In">➕</button>
+    <button id="zoom-val-btn" class="tool-btn" style="font-size: 12px; font-weight: bold;" onclick="resetZoom()" title="Reset">100%</button>
+    <button class="tool-btn" onclick="changeZoom(0.8)" title="Zoom Out">➖</button>
+</div>
+
+<canvas id="whiteboard"></canvas>
+
+<script>
+    // ── Server-provided context ──
+    const roomName  = "{{ room_id }}";
+    const role      = "{{ role|default:'student' }}";   // 'teacher' | 'student'
+    const myName    = "{{ username|default:'Student' }}";
+    const isTeacher = (role === 'teacher');
+    const myUserId  = Math.random().toString(36).substr(2, 9); // random session id
+
+    // ── Permission State ──
+    let canDraw   = isTeacher;
+    let requested = false;
+
+    // ── Participants Map (teacher view) ──
+    // { userId: { name, status: 'viewing'|'pending'|'allowed' } }
+    const participants = {};
+
+    // ── WebSocket ──
+    const wsScheme = location.protocol === 'https:' ? 'wss' : 'ws';
+    const socket   = new WebSocket(`${wsScheme}://${location.host}/ws/whiteboard/${roomName}/`);
+
+    // ── Fabric.js Canvas ──
+    const canvas = new fabric.Canvas('whiteboard', {
+        isDrawingMode: canDraw,
+        backgroundColor: '#ffffff',
+        selection: canDraw,
+        preserveObjectStacking: true,
+        interactive: canDraw,
+    });
+
+    // ── History ──
+    let history = [], redoHistory = [], isHistoryAction = false;
+    function saveHistory() {
+        if (isHistoryAction) return;
+        const json = JSON.stringify(canvas.toJSON(['id']));
+        if (!history.length || history[history.length - 1] !== json) {
+            history.push(json);
+            if (history.length > 50) history.shift();
+            redoHistory = [];
+        }
+    }
+    canvas.on('object:added', saveHistory);
+    canvas.on('object:modified', saveHistory);
+    canvas.on('object:removed', saveHistory);
+
+    function undo() {
+        if (!canDraw || !history.length) return;
+        isHistoryAction = true;
+        redoHistory.push(JSON.stringify(canvas.toJSON(['id'])));
+        canvas.loadFromJSON(history.pop(), () => { canvas.renderAll(); isHistoryAction = false; syncFullBoard(); });
+    }
+    function redo() {
+        if (!canDraw || !redoHistory.length) return;
+        isHistoryAction = true;
+        history.push(JSON.stringify(canvas.toJSON(['id'])));
+        canvas.loadFromJSON(redoHistory.pop(), () => { canvas.renderAll(); isHistoryAction = false; syncFullBoard(); });
+    }
+    function syncFullBoard() {
+        socket.send(JSON.stringify({ type: 'full_sync', data: canvas.toJSON(['id']) }));
+    }
+
+    // ── UI Init ──
+    function initUI() {
+        if (isTeacher) {
+            document.getElementById('toolbar').style.display = 'flex';
+        } else {
+            document.getElementById('student-view-info').style.display = 'block';
+        }
+    }
+    initUI();
+
+    // ── Resize ──
+    
+    // ── ZOOM AND PAN LOGIC ──
+    canvas.on('mouse:wheel', function(opt) {
+        var delta = opt.e.deltaY;
+        var zoom = canvas.getZoom();
+        zoom *= 0.999 ** delta;
+        if (zoom > 5) zoom = 5;
+        if (zoom < 0.2) zoom = 0.2;
+        canvas.zoomToPoint(new fabric.Point(opt.e.offsetX, opt.e.offsetY), zoom);
+        opt.e.preventDefault();
+        opt.e.stopPropagation();
+        updateZoomText();
+    });
+
+    let isDragging = false;
+    let lastPosX, lastPosY;
+    
+    // Add touch support for panning if not drawing
+    canvas.on('mouse:down', function(opt) {
+        var evt = opt.e;
+        if (!canDraw || evt.altKey || currentMode === 'pan') {
+            this.isDragging = true;
+            this.selection = false;
+            // Support both touch and mouse
+            this.lastPosX = evt.clientX !== undefined ? evt.clientX : evt.touches?.[0]?.clientX;
+            this.lastPosY = evt.clientY !== undefined ? evt.clientY : evt.touches?.[0]?.clientY;
+        }
+    });
+    canvas.on('mouse:move', function(opt) {
+        if (this.isDragging) {
+            var e = opt.e;
+            var clientX = e.clientX !== undefined ? e.clientX : e.touches?.[0]?.clientX;
+            var clientY = e.clientY !== undefined ? e.clientY : e.touches?.[0]?.clientY;
+            
+            if (clientX !== undefined && clientY !== undefined) {
+                var vpt = this.viewportTransform;
+                vpt[4] += clientX - this.lastPosX;
+                vpt[5] += clientY - this.lastPosY;
+                this.requestRenderAll();
+                this.lastPosX = clientX;
+                this.lastPosY = clientY;
+            }
+        }
+    });
+    canvas.on('mouse:up', function(opt) {
+        this.setViewportTransform(this.viewportTransform);
+        this.isDragging = false;
+        if (canDraw && currentMode !== 'pan') {
+            this.selection = true;
+        }
+    });
+
+        function updateZoomText() {
+        const btn = document.getElementById('zoom-val-btn');
+        if (btn) btn.innerText = Math.round(canvas.getZoom() * 100) + '%';
+    }
+
+    function changeZoom(factor) {
+        let zoom = canvas.getZoom() * factor;
+        if (zoom > 5) zoom = 5;
+        if (zoom < 0.2) zoom = 0.2;
+        
+        // Zoom to center
+        canvas.zoomToPoint(new fabric.Point(canvas.width / 2, canvas.height / 2), zoom);
+        updateZoomText();
+    }
+    function resetZoom() {
+        canvas.setViewportTransform([1,0,0,1,0,0]);
+        updateZoomText();
+    }
+
+
+    function resizeCanvas() {
+        canvas.setWidth(window.innerWidth);
+        canvas.setHeight(window.innerHeight);
+        canvas.renderAll();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    setTimeout(saveHistory, 100);
+
+    // ── Shapes dropdown toggle ──
+    function toggleShapes(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('shapes-menu');
+        menu.classList.toggle('show');
+    }
+    document.addEventListener('click', () => {
+        document.getElementById('shapes-menu').classList.remove('show');
+    });
+
+    // ── Mode ──
+    let isErasing = false, isSyncing = false, currentMode = 'draw';
+    canvas.freeDrawingBrush.color = '#000000';
+    canvas.freeDrawingBrush.width = 5;
+
+    function setMode(mode) {
+        if (!canDraw) return;
+        document.querySelectorAll('#toolbar > .tool-btn').forEach(b => b.classList.remove('active'));
+        currentMode = mode;
+        if (mode === 'select') {
+            document.getElementById('btn-select').classList.add('active');
+            canvas.isDrawingMode = false;
+        } else if (mode === 'draw') {
+            document.getElementById('btn-draw').classList.add('active');
+            canvas.isDrawingMode = true;
+            isErasing = false;
+            updateStyles();
+        } else if (mode === 'erase') {
+            document.getElementById('btn-erase').classList.add('active');
+            canvas.isDrawingMode = true;
+            isErasing = true;
+            updateStyles();
+        }
+    }
+
+    function getStroke() { return document.getElementById('stroke-color').value; }
+    function getFill()   { const v = document.getElementById('fill-color').value; return v === '#ffffff' ? 'transparent' : v; }
+    function getSize()   { return parseInt(document.getElementById('brush-size').value, 10); }
+
+    function updateStyles() {
+        if (!canDraw) return;
+        const size = getSize();
+        document.getElementById('brush-size-val').innerText = size;
+        if (isErasing) {
+            canvas.freeDrawingBrush.color = '#ffffff';
+            canvas.freeDrawingBrush.width = size * 4;
+        } else {
+            canvas.freeDrawingBrush.color = getStroke();
+            canvas.freeDrawingBrush.width = size;
+        }
+        const obj = canvas.getActiveObject();
+        if (obj) {
+            if (obj.type === 'path' || obj.type === 'line')  obj.set({ stroke: getStroke(), strokeWidth: size });
+            else if (obj.type === 'i-text')                   obj.set({ fill: getStroke() });
+            else                                               obj.set({ stroke: getStroke(), fill: getFill(), strokeWidth: size });
+            canvas.renderAll();
+            syncModified(obj);
+        }
+    }
+
+    // ── Helpers ──
+    function genId() { return Math.random().toString(36).substr(2, 9) + '_' + Date.now(); }
+    function showToast(msg, dur = 3000) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.opacity = 1;
+        setTimeout(() => { t.style.opacity = 0; }, dur);
+    }
+
+    // ── Clear / Delete ──
+    function clearBoard() {
+        if (!canDraw) return;
+        if (confirm('Clear the whiteboard for everyone?')) {
+            canvas.clear(); canvas.backgroundColor = '#ffffff';
+            history = []; redoHistory = [];
+            socket.send(JSON.stringify({ type: 'clear' }));
+        }
+    }
+    function deleteSelected() {
+        if (!canDraw) return;
+        const objs = canvas.getActiveObjects();
+        canvas.discardActiveObject();
+        objs.forEach(o => {
+            if (o.id) socket.send(JSON.stringify({ type: 'remove', id: o.id }));
+            canvas.remove(o);
+        });
+    }
+
+    // ── Keyboard shortcuts ──
+    window.addEventListener('keydown', e => {
+        if (canvas.getActiveObject()?.isEditing) return;
+        if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); }
+    });
+
+    // ── Shapes ──
+    function addShape(type) {
+        if (!canDraw) return;
+        const stroke = getStroke(), fill = getFill(), size = getSize();
+        const cx = canvas.getCenter();
+        const p = { left: cx.left, top: cx.top, stroke, strokeWidth: size, fill, id: genId() };
+        let shape;
+        const poly = (pts) => new fabric.Polygon(pts, p);
+        if (type === 'rect')           shape = new fabric.Rect({ ...p, width: 160, height: 100 });
+        else if (type === 'square')    shape = new fabric.Rect({ ...p, width: 120, height: 120 });
+        else if (type === 'circle')    shape = new fabric.Circle({ ...p, radius: 70 });
+        else if (type === 'ellipse')   shape = new fabric.Ellipse({ ...p, rx: 110, ry: 55 });
+        else if (type === 'triangle')  shape = new fabric.Triangle({ ...p, width: 140, height: 140 });
+        else if (type === 'line')      shape = new fabric.Line([0,0,200,0], { ...p, fill: stroke });
+        else if (type === 'right-triangle') shape = poly([{x:0,y:0},{x:140,y:140},{x:0,y:140}]);
+        else if (type === 'diamond')        shape = poly([{x:75,y:0},{x:150,y:80},{x:75,y:160},{x:0,y:80}]);
+        else if (type === 'parallelogram')  shape = poly([{x:50,y:0},{x:200,y:0},{x:150,y:100},{x:0,y:100}]);
+        else if (type === 'trapezoid')      shape = poly([{x:40,y:0},{x:160,y:0},{x:200,y:100},{x:0,y:100}]);
+        else if (type === 'pentagon')       shape = poly([{x:75,y:0},{x:150,y:56},{x:121,y:145},{x:29,y:145},{x:0,y:56}]);
+        else if (type === 'hexagon')        shape = poly([{x:75,y:0},{x:150,y:43},{x:150,y:130},{x:75,y:173},{x:0,y:130},{x:0,y:43}]);
+        else if (type === 'octagon')        shape = poly([{x:44,y:0},{x:106,y:0},{x:150,y:44},{x:150,y:106},{x:106,y:150},{x:44,y:150},{x:0,y:106},{x:0,y:44}]);
+        else if (type === 'star')           shape = poly([{x:75,y:0},{x:91,y:56},{x:150,y:56},{x:104,y:90},{x:122,y:150},{x:75,y:114},{x:28,y:150},{x:46,y:90},{x:0,y:56},{x:59,y:56}]);
+        else if (type === 'cross')          shape = poly([{x:50,y:0},{x:100,y:0},{x:100,y:50},{x:150,y:50},{x:150,y:100},{x:100,y:100},{x:100,y:150},{x:50,y:150},{x:50,y:100},{x:0,y:100},{x:0,y:50},{x:50,y:50}]);
+        else if (type === 'arrow-right')    shape = poly([{x:0,y:45},{x:100,y:45},{x:100,y:20},{x:150,y:70},{x:100,y:120},{x:100,y:95},{x:0,y:95}]);
+        else if (type === 'arrow-left')     shape = poly([{x:150,y:45},{x:50,y:45},{x:50,y:20},{x:0,y:70},{x:50,y:120},{x:50,y:95},{x:150,y:95}]);
+        else if (type === 'arrow-up')       shape = poly([{x:45,y:150},{x:45,y:50},{x:20,y:50},{x:70,y:0},{x:120,y:50},{x:95,y:50},{x:95,y:150}]);
+        else if (type === 'arrow-down')     shape = poly([{x:45,y:0},{x:45,y:100},{x:20,y:100},{x:70,y:150},{x:120,y:100},{x:95,y:100},{x:95,y:0}]);
+        else if (type === 'axes') {
+            const g = [
+                new fabric.Line([100,10,100,200], { stroke, strokeWidth: size }),
+                new fabric.Line([10,100,200,100], { stroke, strokeWidth: size }),
+                new fabric.Triangle({ width: 12, height: 16, fill: stroke, left: 100, top: 10, angle: 0, originX: 'center', originY: 'center' }),
+                new fabric.Triangle({ width: 12, height: 16, fill: stroke, left: 200, top: 100, angle: 90, originX: 'center', originY: 'center' }),
+            ];
+            shape = new fabric.Group(g, { left: cx.left, top: cx.top, id: genId() });
+        }
+        if (shape) {
+            canvas.add(shape);
+            canvas.setActiveObject(shape);
+            setMode('select');
+            syncAdded(shape);
+            document.getElementById('shapes-menu').classList.remove('show');
+        }
+    }
+
+    function addText() {
+        if (!canDraw) return;
+        const cx = canvas.getCenter();
+        const t = new fabric.IText('Type here', {
+            left: cx.left, top: cx.top,
+            fill: getStroke(), fontFamily: 'sans-serif',
+            fontSize: Math.max(22, getSize() * 4), id: genId()
+        });
+        canvas.add(t);
+        canvas.setActiveObject(t);
+        t.enterEditing(); t.selectAll();
+        setMode('select');
+        syncAdded(t);
+    }
+
+    function uploadImage(e) {
+        if (!canDraw) return;
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = f => {
+            fabric.Image.fromURL(f.target.result, img => {
+                img.set({ id: genId() });
+                if (img.width > canvas.width / 2) img.scaleToWidth(canvas.width / 2);
+                canvas.centerObject(img);
+                canvas.add(img);
+                canvas.setActiveObject(img);
+                setMode('select');
+                syncAdded(img);
+            });
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── Sync ──
+    function syncAdded(obj) {
+        if (isSyncing) return;
+        socket.send(JSON.stringify({ type: 'add', data: obj.toJSON(['id']) }));
+    }
+    function syncModified(obj) {
+        if (isSyncing || !obj.id) return;
+        socket.send(JSON.stringify({ type: 'modify', data: obj.toJSON(['id']) }));
+    }
+
+    canvas.on('path:created',   e => { if (isSyncing) return; const p = e.path; p.set({ id: genId() }); syncAdded(p); });
+    canvas.on('object:modified', e => syncModified(e.target));
+    canvas.on('text:changed',    e => syncModified(e.target));
+
+    function findById(id) { return canvas.getObjects().find(o => o.id === id) || null; }
+
+    // ── WebSocket Messages ──
+    socket.onopen = () => {
+        // Announce presence
+        socket.send(JSON.stringify({ type: 'join', userId: myUserId, name: myName, role }));
+    };
+
+    socket.onmessage = e => {
+        const msg = JSON.parse(e.data);
+
+        if (msg.type === 'add' || msg.type === 'draw') {
+            isSyncing = true;
+            fabric.util.enlivenObjects([msg.data], objs => {
+                objs[0].selectable = canDraw; objs[0].evented = canDraw; canvas.add(objs[0]); canvas.renderAll(); isSyncing = false;
+            });
+        }
+        else if (msg.type === 'modify') {
+            isSyncing = true;
+            const obj = findById(msg.data.id);
+            if (obj) { obj.set(msg.data); obj.selectable = canDraw; obj.evented = canDraw; canvas.renderAll(); }
+            else { fabric.util.enlivenObjects([msg.data], objs => { objs[0].selectable = canDraw; objs[0].evented = canDraw; canvas.add(objs[0]); canvas.renderAll(); }); }
+            isSyncing = false;
+        }
+        else if (msg.type === 'remove') {
+            isSyncing = true;
+            const obj = findById(msg.id);
+            if (obj) { canvas.remove(obj); canvas.renderAll(); }
+            isSyncing = false;
+        }
+        else if (msg.type === 'clear') {
+            isSyncing = true;
+            canvas.clear(); canvas.backgroundColor = '#ffffff'; canvas.renderAll();
+            history = []; redoHistory = [];
+            isSyncing = false;
+        }
+        else if (msg.type === 'full_sync') {
+            isSyncing = true;
+            canvas.loadFromJSON(msg.data, () => { canvas.forEachObject(o => { o.selectable = canDraw; o.evented = canDraw; }); canvas.renderAll(); isSyncing = false; });
+        }
+
+        // ── Join/Leave ──
+        else if (msg.type === 'join') {
+            if (msg.userId !== myUserId) {
+                if (isTeacher) {
+                    participants[msg.userId] = { name: msg.name, status: 'viewing' };
+                    renderParticipantList();
+                }
+                // Broadcast presence so the newcomer knows we are here
+                socket.send(JSON.stringify({ type: 'presence', userId: myUserId, name: myName, role }));
+            }
+        }
+        else if (msg.type === 'presence') {
+            if (msg.userId !== myUserId && isTeacher) {
+                if (!participants[msg.userId]) {
+                    participants[msg.userId] = { name: msg.name, status: 'viewing' };
+                    renderParticipantList();
+                }
+            }
+        }
+        else if (msg.type === 'leave') {
+            if (isTeacher && participants[msg.userId]) {
+                delete participants[msg.userId];
+                renderParticipantList();
+            }
+        }
+
+        // ── Permission requests ──
+        else if (msg.type === 'request_draw' && isTeacher) {
+            if (participants[msg.userId]) {
+                participants[msg.userId].status = 'pending';
+            } else {
+                participants[msg.userId] = { name: msg.name, status: 'pending' };
+            }
+            renderParticipantList();
+            showToast(`✋ ${msg.name || 'A student'} is requesting to draw!`);
+            // Auto open settings if modal not open
+            if (!document.getElementById('tutor-modal').classList.contains('show')) {
+                openSettings();
+            }
+        }
+        else if (msg.type === 'grant_draw') {
+            if (msg.targetId === myUserId) {
+                canDraw = true;
+                enableDrawing();
+                showToast('✅ Tutor has given you permission to draw!');
+                document.getElementById('request-status-msg').innerText = '✅ Permission granted! Close settings to start drawing.';
+            }
+        }
+        else if (msg.type === 'revoke_draw') {
+            if (msg.targetId === myUserId) {
+                canDraw = false;
+                disableDrawing();
+                showToast('⛔ The tutor has removed your drawing permission.');
+                document.getElementById('request-status-msg').innerText = '';
+                document.getElementById('request-draw-btn').disabled = false;
+                document.getElementById('request-draw-btn').innerText = '✋ Request Permission to Draw';
+                requested = false;
+            }
+        }
+        else if (msg.type === 'reject_draw') {
+            if (msg.targetId === myUserId) {
+                showToast('❌ Tutor declined your request.');
+                const btn = document.getElementById('request-draw-btn');
+                btn.disabled = false;
+                btn.innerText = '✋ Request Permission to Draw';
+                document.getElementById('request-status-msg').innerText = '❌ Request was declined. You can try again.';
+                requested = false;
+            }
+        }
+    };
+
+    socket.onclose = () => {
+        socket.send && socket.send(JSON.stringify({ type: 'leave', userId: myUserId }));
+    };
+
+    window.addEventListener('beforeunload', () => {
+        try { socket.send(JSON.stringify({ type: 'leave', userId: myUserId })); } catch(_){}
+    });
+
+    // ── Enable / Disable Drawing ──
+    function enableDrawing() {
+        document.getElementById('toolbar').style.display = 'flex';
+        document.getElementById('student-view-info').style.display = 'none';
+        canvas.selection = true; canvas.forEachObject(o => { o.selectable = true; o.evented = true; }); canvas.renderAll();
+        setMode('draw');
+    }
+    function disableDrawing() {
+        document.getElementById('toolbar').style.display = 'none';
+        document.getElementById('student-view-info').style.display = 'block';
+        canvas.isDrawingMode = false;
+        canvas.selection = false; canvas.forEachObject(o => { o.selectable = false; o.evented = false; }); canvas.discardActiveObject(); canvas.renderAll();
+    }
+
+    // ── Settings Modal ──
+    function openSettings() {
+        if (isTeacher) {
+            renderParticipantList();
+            openModal('tutor-modal');
+        } else {
+            openModal('student-modal');
+        }
+    }
+    function openModal(id) { document.getElementById(id).classList.add('show'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    // ── Tutor: Participant List Render ──
+    function renderParticipantList() {
+        const list = document.getElementById('participant-list');
+        const noMsg = document.getElementById('no-participants-msg');
+        const keys = Object.keys(participants);
+        if (!keys.length) {
+            noMsg.style.display = 'block';
+            // Remove all rows except the "no participants" message
+            list.querySelectorAll('.participant-row').forEach(r => r.remove());
+            return;
+        }
+        noMsg.style.display = 'none';
+        list.querySelectorAll('.participant-row').forEach(r => r.remove());
+
+        keys.forEach(uid => {
+            const p = participants[uid];
+            const row = document.createElement('div');
+            row.className = 'participant-row';
+            row.id = `row-${uid}`;
+
+            const badgeClass = p.status === 'pending' ? 'badge-pending' : p.status === 'allowed' ? 'badge-allowed' : 'badge-viewing';
+            const badgeLabel = p.status === 'pending' ? '⏳ Pending' : p.status === 'allowed' ? '✅ Drawing' : '👁 Viewing';
+
+            let actions = '';
+            if (p.status === 'pending') {
+                actions = `<button class="action-btn btn-accept" onclick="grantDraw('${uid}')">Accept</button>
+                           <button class="action-btn btn-reject" onclick="rejectDraw('${uid}')">Reject</button>`;
+            } else if (p.status === 'allowed') {
+                actions = `<button class="action-btn btn-revoke" onclick="revokeDraw('${uid}')">Disable</button>`;
+            } else {
+                actions = `<button class="action-btn btn-accept" onclick="grantDraw('${uid}')">Allow Draw</button>`;
+            }
+
+            row.innerHTML = `
+                <div>
+                    <div class="participant-name">${p.name || 'Student'}</div>
+                    <span class="participant-badge ${badgeClass}">${badgeLabel}</span>
+                </div>
+                <div class="participant-actions">${actions}</div>
+            `;
+            list.appendChild(row);
+        });
+    }
+
+    // ── Tutor Permission Actions ──
+    function grantDraw(uid) {
+        participants[uid].status = 'allowed';
+        renderParticipantList();
+        socket.send(JSON.stringify({ type: 'grant_draw', targetId: uid }));
+        showToast(`✅ Drawing permission granted to ${participants[uid].name}`);
+    }
+    function rejectDraw(uid) {
+        participants[uid].status = 'viewing';
+        renderParticipantList();
+        socket.send(JSON.stringify({ type: 'reject_draw', targetId: uid }));
+    }
+    function revokeDraw(uid) {
+        participants[uid].status = 'viewing';
+        renderParticipantList();
+        socket.send(JSON.stringify({ type: 'revoke_draw', targetId: uid }));
+        showToast(`⛔ Drawing permission removed from ${participants[uid].name}`);
+    }
+
+    // ── Student Request ──
+    function requestDrawPermission() {
+        if (requested) return;
+        requested = true;
+        socket.send(JSON.stringify({ type: 'request_draw', userId: myUserId, name: myName }));
+        const btn = document.getElementById('request-draw-btn');
+        btn.disabled = true;
+        btn.innerText = '⏳ Request Sent...';
+        document.getElementById('request-status-msg').innerText = 'Waiting for tutor to respond...';
+        showToast('Request sent! Waiting for tutor...');
+    }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(o => {
+        o.addEventListener('click', e => { if (e.target === o) o.classList.remove('show'); });
+    });
+</script>
+</body>
+</html>
+

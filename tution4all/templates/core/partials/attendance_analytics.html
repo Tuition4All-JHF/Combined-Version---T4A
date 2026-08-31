@@ -1,0 +1,240 @@
+<div class="attendance-analytics-section mt-5 mb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <h4 class="fw-bold text-primary mb-0"><i class="bi bi-graph-up me-2"></i> Attendance Analytics & Trends</h4>
+        <form method="GET" class="d-flex align-items-center gap-2">
+            <!-- Maintain existing query params if any, but replace att_ dates -->
+            {% if subject_id %}
+            <input type="hidden" name="subject_id" value="{{ subject_id }}">
+            {% endif %}
+            <input type="date" name="att_start_date" class="form-control form-control-sm rounded-pill" value="{{ att_start_date|default:'' }}" aria-label="Start Date">
+            <span class="text-muted">to</span>
+            <input type="date" name="att_end_date" class="form-control form-control-sm rounded-pill" value="{{ att_end_date|default:'' }}" aria-label="End Date">
+            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Filter</button>
+            {% if att_start_date or att_end_date %}
+                <a href="?" class="btn btn-outline-secondary btn-sm rounded-pill px-3">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Highlighted Total Overall Attendance -->
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow border-0 rounded-4 h-100" style="background-color: #6f42c1; color: white;">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-clock-history mb-3 d-block" style="font-size: 2.5rem;"></i>
+                    <h5 class="mb-2 opacity-75">Total Overall Attendance <br><small class="text-white-50 fw-normal" style="font-size: 0.85rem;">(Time Based)</small></h5>
+                    <h2 class="fw-bold mb-0 display-5">{{ att_time_attended_percentage }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Stats -->
+    <div class="row row-cols-2 row-cols-md-5 mb-4 g-3">
+        <div class="col">
+            <div class="card bg-primary text-white shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-3">
+                    <h6 class="mb-1 opacity-75">Total Sessions</h6>
+                    <h3 class="fw-bold mb-0">{{ att_total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-success text-white shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-3">
+                    <h6 class="mb-1 opacity-75">Present/Late</h6>
+                    <h3 class="fw-bold mb-0">{{ att_present }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-danger text-white shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-3">
+                    <h6 class="mb-1 opacity-75">Missed/Absent</h6>
+                    <h3 class="fw-bold mb-0">{{ att_absent }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-warning text-dark shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-3">
+                    <h6 class="mb-1 opacity-75">Total Time Attended</h6>
+                    <h4 class="fw-bold mb-0 mt-2">{{ att_exact_time }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-secondary text-white shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body text-center p-3">
+                    <h6 class="mb-1 opacity-75">Learning Time Lost</h6>
+                    <h4 class="fw-bold mb-0 mt-2">{{ att_time_lost_exact }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-dark mb-3">Daily Attendance Trends</h5>
+                    <div style="height: 300px; width: 100%;">
+                        <canvas id="attendanceLineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                    <h5 class="fw-bold text-dark mb-1">Time Attended vs Lost (Time Based)</h5>
+                    <h4 class="text-primary fw-bold mb-3">{{ att_time_attended_percentage }}% Attended</h4>
+                    <div style="height: 300px; width: 100%; display: flex; justify-content: center;">
+                        <canvas id="timePieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                    <h5 class="fw-bold text-dark mb-3">Status Distribution (Class Based)</h5>
+                    <div style="height: 300px; width: 100%; display: flex; justify-content: center;">
+                        <canvas id="attendancePieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const attChartData = {{ att_chart_data_json|default:"null"|safe }};
+        if (attChartData && attChartData.labels && attChartData.labels.length > 0) {
+            const ctxLine = document.getElementById('attendanceLineChart');
+            if (ctxLine) {
+                new Chart(ctxLine, {
+                    type: 'line',
+                    data: {
+                        labels: attChartData.labels,
+                        datasets: [
+                            {
+                                label: 'Attendance %',
+                                data: attChartData.percentages,
+                                borderColor: '#0d6efd',
+                                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Total Hours',
+                                data: attChartData.hours,
+                                borderColor: '#ffc107',
+                                backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y1'
+                            },
+                            {
+                                label: 'Missed Classes',
+                                data: attChartData.missed,
+                                borderColor: '#dc3545',
+                                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: { display: true, text: 'Percentage (%)' },
+                                suggestedMin: 0,
+                                suggestedMax: 100
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: { display: true, text: 'Count/Hours' },
+                                suggestedMin: 0,
+                                grid: { drawOnChartArea: false }
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'top' }
+                        }
+                    }
+                });
+            }
+        }
+
+        const pieChartData = {{ att_pie_data_json|default:"null"|safe }};
+        if (pieChartData && pieChartData.labels && pieChartData.labels.length > 0) {
+            const ctxPie = document.getElementById('attendancePieChart');
+            if (ctxPie) {
+                new Chart(ctxPie, {
+                    type: 'doughnut',
+                    data: {
+                        labels: pieChartData.labels,
+                        datasets: [{
+                            data: pieChartData.data,
+                            backgroundColor: [
+                                '#198754', // Present (Success)
+                                '#ffc107', // Late (Warning)
+                                '#dc3545'  // Absent (Danger)
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+        }
+
+        const timePieChartData = {{ time_pie_data_json|default:"null"|safe }};
+        if (timePieChartData && timePieChartData.labels && timePieChartData.labels.length > 0) {
+            const ctxTimePie = document.getElementById('timePieChart');
+            if (ctxTimePie) {
+                new Chart(ctxTimePie, {
+                    type: 'doughnut',
+                    data: {
+                        labels: timePieChartData.labels,
+                        datasets: [{
+                            data: timePieChartData.data,
+                            backgroundColor: timePieChartData.colors,
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+        }
+    });
+</script>

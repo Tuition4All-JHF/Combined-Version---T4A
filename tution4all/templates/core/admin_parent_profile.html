@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+
+{% block title %}Parent Profile - Admin{% endblock %}
+
+{% block content %}
+<div class="row py-4">
+    <div class="col-12 mb-4 d-flex justify-content-between align-items-center">
+        <h2 class="fw-bold text-primary m-0"><i class="bi bi-people-fill"></i> Parent Complete Report</h2>
+        <div class="d-print-none">
+            <button onclick="window.print()" class="btn btn-primary rounded-pill me-2"><i class="bi bi-printer"></i> Download PDF</button>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill">Back</a>
+        </div>
+    </div>
+
+    <!-- Parent Info Card -->
+    <div class="col-md-4 mb-4">
+        <div class="card shadow-sm border-0 rounded-4 h-100">
+            <div class="card-body text-center p-4">
+                <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center text-primary mb-3" style="width: 100px; height: 100px; font-size: 3rem;">
+                    <i class="bi bi-person-heart"></i>
+                </div>
+                <h4 class="fw-bold">{{ parent.user.get_full_name|default:parent.user.username }}</h4>
+                <p class="text-muted mb-1"><i class="bi bi-envelope"></i> {{ parent.user.email }}</p>
+                <p class="text-muted mb-3"><i class="bi bi-telephone"></i> {{ parent.user.phone_number|default:"Not Provided" }}</p>
+                
+                <hr>
+                
+                <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded-3 mt-4">
+                    <span class="text-muted">Linked Children</span>
+                    <span class="fw-bold fs-5 text-primary">{{ children.count }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <!-- Linked Children Details -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h4 class="fw-bold text-primary"><i class="bi bi-emoji-smile"></i> Linked Children</h4>
+            </div>
+            <div class="card-body p-4">
+                {% if children %}
+                <div class="row">
+                    {% for child in children %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card border-primary border-opacity-25 rounded-3 h-100 bg-light bg-opacity-50">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3 shadow-sm" style="width: 50px; height: 50px; font-size: 1.5rem;">
+                                        <i class="bi bi-person"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold mb-0">{{ child.user.get_full_name|default:child.user.username }}</h5>
+                                        <small class="text-muted">ID: {{ child.student_id }}</small>
+                                    </div>
+                                </div>
+                                <div class="d-grid">
+                                    <a href="{% url 'core:admin_student_profile' child.id %}" class="btn btn-outline-primary btn-sm rounded-pill">View Student Profile</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-diagram-3 fs-1 mb-2 d-block"></i>
+                    <p>This parent has not linked any children to their account yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Children's Payment & Active Courses -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h4 class="fw-bold text-primary"><i class="bi bi-receipt"></i> Children's Payment & Course History</h4>
+            </div>
+            <div class="card-body p-4">
+                {% if children_enrollments %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Child Name</th>
+                                <th>Course Title</th>
+                                <th>Teacher</th>
+                                <th>Price</th>
+                                <th>Enrolled Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for enrollment in children_enrollments %}
+                            <tr>
+                                <td class="fw-bold">{{ enrollment.student.user.get_full_name|default:enrollment.student.user.username }}</td>
+                                <td>{{ enrollment.course.title }}</td>
+                                <td>{{ enrollment.course.teacher.user.get_full_name|default:enrollment.course.teacher.user.username }}</td>
+                                <td class="text-success fw-bold">₹ {{ enrollment.course.price }}</td>
+                                <td class="text-muted small">{{ enrollment.date_enrolled|date:"M d, Y" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-journal-x fs-1 mb-2 d-block"></i>
+                    <p>None of the linked children are currently enrolled in any courses.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Children's Complete Attendance Log -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h4 class="fw-bold text-primary"><i class="bi bi-calendar-check"></i> Children's Complete Attendance Log</h4>
+            </div>
+            <div class="card-body p-4">
+                {% if children_attendances %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Child Name</th>
+                                <th>Course</th>
+                                <th>Live Class Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attendance in children_attendances %}
+                            <tr>
+                                <td class="fw-bold">{{ attendance.student.user.get_full_name|default:attendance.student.user.username }}</td>
+                                <td>{{ attendance.live_class.course.title }}</td>
+                                <td>{{ attendance.live_class.start_time|date:"M d, Y" }} - {{ attendance.live_class.start_time|time:"h:i A" }}</td>
+                                <td>
+                                    {% if attendance.status == 'present' %}
+                                    <span class="badge bg-success">Present</span>
+                                    {% elif attendance.status == 'absent' %}
+                                    <span class="badge bg-danger">Absent</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ attendance.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-clock-history fs-1 mb-2 d-block"></i>
+                    <p>No attendance records found for any linked children.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

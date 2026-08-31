@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+{% load dict_extras %}
+
+{% block title %}Deep Student Analytics - Tution4All{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold text-primary mb-0"><i class="bi bi-graph-up-arrow me-2"></i> Deep Student Analytics</h2>
+        <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill px-4"><i class="bi bi-arrow-left me-2"></i> Back to Dashboard</a>
+    </div>
+
+    <!-- Student Switcher -->
+    <div class="card shadow-sm border-0 rounded-4 mb-5">
+        <div class="card-body p-4 bg-light rounded-4">
+            <h5 class="fw-bold mb-3">Select Student to Analyze</h5>
+            <div class="d-flex flex-wrap gap-2">
+                {% for child in all_children %}
+                    <a href="{% url 'core:parent_student_analysis' child.id %}" class="btn rounded-pill px-4 {% if current_student.id == child.id %}btn-primary fw-bold shadow{% else %}btn-outline-primary{% endif %}">
+                        <i class="bi bi-person-fill me-2"></i> {{ child.user.get_full_name|default:child.user.username }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Dashboard for Selected Student -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-dark mb-0">Analytics for <span class="text-primary">{{ current_student.user.get_full_name|default:current_student.user.username }}</span></h4>
+        <form method="GET" class="d-flex gap-2">
+            <select name="subject_id" class="form-select form-select-sm rounded-pill" style="min-width: 150px;" aria-label="Subject">
+                <option value="">All Subjects</option>
+                {% for course in enrolled_courses %}
+                    <option value="{{ course.id }}" {% if subject_id == course.id %}selected{% endif %}>{{ course.title }}</option>
+                {% endfor %}
+            </select>
+            <input type="date" name="start_date" class="form-control form-control-sm rounded-pill" value="{{ start_date|default:'' }}" aria-label="Start Date">
+            <input type="date" name="end_date" class="form-control form-control-sm rounded-pill" value="{{ end_date|default:'' }}" aria-label="End Date">
+            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3">Filter</button>
+            {% if start_date or end_date or subject_id %}
+                <a href="?" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Clear</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Key Metrics Row -->
+    <div class="row mb-5">
+        <div class="col-md-4 mb-3">
+            <div class="card shadow border-0 rounded-4 h-100 bg-danger text-white">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-clock-history mb-3 d-block" style="font-size: 2.5rem;"></i>
+                    <h4 class="fw-bold mb-1 mt-2">{{ time_lost_exact }}</h4>
+                    <p class="mb-0">Learning Time Lost <br><small class="text-white-50 fw-normal" style="font-size: 0.75rem;">(Time Based)</small></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow border-0 rounded-4 h-100 bg-warning text-dark">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-exclamation-triangle mb-3 d-block" style="font-size: 2.5rem;"></i>
+                    <h3 class="fw-bold mb-1">{{ att_absent }}</h3>
+                    <p class="mb-0">Classes Missed</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow border-0 rounded-4 h-100 bg-success text-white">
+                <div class="card-body text-center p-4">
+                    <i class="bi bi-check-circle mb-3 d-block" style="font-size: 2.5rem;"></i>
+                    <h3 class="fw-bold mb-1">{{ att_present }}</h3>
+                    <p class="mb-0">Present Class Count</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Shared Attendance Analytics -->
+    {% include 'core/partials/attendance_analytics.html' %}
+
+    <div class="row">
+        <!-- Attendance Breakdown -->
+        <div class="col-md-6 mb-5">
+            <h4 class="fw-bold text-dark mb-3"><i class="bi bi-clock-history me-2 text-danger"></i> Late & Missed Sessions Log</h4>
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-0">
+                    {% if missed_sessions %}
+                    <ul class="list-group list-group-flush rounded-4">
+                        {% for session in missed_sessions %}
+                        <li class="list-group-item p-4">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">{{ session.class.title }}</h6>
+                                    <p class="text-muted small mb-0"><i class="bi bi-calendar-event me-1"></i> {{ session.class.start_time|date:"M d, Y - h:i A" }}</p>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge {% if session.status == 'Absent' or session.status == 'Absent (Never Joined)' %}bg-danger{% else %}bg-warning text-dark{% endif %} rounded-pill px-3 py-2 mb-2 d-inline-block">{{ session.status }}</span>
+                                    <div class="small text-danger fw-bold"><i class="bi bi-clock me-1"></i> Lost: {{ session.lost_mins }} mins</div>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    {% if missed_sessions.has_other_pages %}
+                    <nav aria-label="Missed sessions pagination" class="mt-4 mb-2">
+                        <ul class="pagination pagination-sm justify-content-center">
+                            {% if missed_sessions.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link text-dark" href="?page={{ missed_sessions.previous_page_number }}{% if subject_id %}&subject_id={{ subject_id }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}"><i class="bi bi-chevron-left"></i> Prev</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link"><i class="bi bi-chevron-left"></i> Prev</span>
+                                </li>
+                            {% endif %}
+                            
+                            <li class="page-item disabled">
+                                <span class="page-link text-muted">Page {{ missed_sessions.number }} of {{ missed_sessions.paginator.num_pages }}</span>
+                            </li>
+                            
+                            {% if missed_sessions.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link text-dark" href="?page={{ missed_sessions.next_page_number }}{% if subject_id %}&subject_id={{ subject_id }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">Next <i class="bi bi-chevron-right"></i></a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next <i class="bi bi-chevron-right"></i></span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% else %}
+                    <div class="text-center p-5 text-muted">
+                        <i class="bi bi-emoji-smile fs-1 mb-3 d-block text-success"></i>
+                        <h5>Perfect Attendance!</h5>
+                        <p>No missed or late classes recorded.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Academic Breakdown -->
+        <div class="col-md-6 mb-5">
+            <h4 class="fw-bold text-dark mb-3"><i class="bi bi-mortarboard-fill me-2 text-primary"></i> Academic Breakdown</h4>
+            <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4">
+                    
+                    <div class="accordion accordion-flush" id="academicAccordion">
+                        
+                        <!-- ASSIGNMENTS SECTION -->
+                        <h6 class="fw-bold text-muted mb-3">ASSIGNMENTS</h6>
+                        
+                        <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                            <h2 class="accordion-header" id="headingAssignAccepted">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssignAccepted" aria-expanded="false" aria-controls="collapseAssignAccepted">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-file-earmark-check text-success me-2"></i> Accepted</span>
+                                        <span class="badge bg-success rounded-pill fs-6 px-3">{{ assignments_accepted }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseAssignAccepted" class="accordion-collapse collapse" aria-labelledby="headingAssignAccepted" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if assignments_accepted_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for sub in assignments_accepted_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-success"></i> {{ sub.assignment.title }}</div>
+                                                            <div class="small text-muted ms-3">{{ sub.assignment.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if sub.assignment.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ sub.assignment.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                            <h2 class="accordion-header" id="headingAssignReview">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssignReview" aria-expanded="false" aria-controls="collapseAssignReview">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-file-earmark-arrow-up text-primary me-2"></i> Under Review</span>
+                                        <span class="badge bg-primary rounded-pill fs-6 px-3">{{ assignments_under_review }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseAssignReview" class="accordion-collapse collapse" aria-labelledby="headingAssignReview" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if assignments_under_review_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for sub in assignments_under_review_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-primary"></i> {{ sub.assignment.title }}</div>
+                                                            <div class="small text-muted ms-3">{{ sub.assignment.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if sub.assignment.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ sub.assignment.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                            <h2 class="accordion-header" id="headingAssignRejected">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssignRejected" aria-expanded="false" aria-controls="collapseAssignRejected">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-file-earmark-x text-danger me-2"></i> Rejected / Resubmit</span>
+                                        <span class="badge bg-danger rounded-pill fs-6 px-3">{{ assignments_rejected|add:assignments_resubmit }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseAssignRejected" class="accordion-collapse collapse" aria-labelledby="headingAssignRejected" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if assignments_rejected_qs or assignments_resubmit_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for sub in assignments_rejected_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-danger"></i> {{ sub.assignment.title }} <span class="badge bg-danger rounded-pill ms-2" style="font-size: 0.65rem;">Rejected</span></div>
+                                                            <div class="small text-muted ms-3">{{ sub.assignment.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if sub.assignment.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ sub.assignment.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                            {% for sub in assignments_resubmit_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-warning"></i> {{ sub.assignment.title }} <span class="badge bg-warning text-dark rounded-pill ms-2" style="font-size: 0.65rem;">Resubmit</span></div>
+                                                            <div class="small text-muted ms-3">{{ sub.assignment.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if sub.assignment.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ sub.assignment.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border rounded-3 mb-4 border-start border-warning border-4 overflow-hidden">
+                            <h2 class="accordion-header" id="headingAssignPending">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseAssignPending" aria-expanded="false" aria-controls="collapseAssignPending">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-hourglass-split text-warning me-2"></i> Pending (Not Submitted)</span>
+                                        <span class="badge bg-warning text-dark rounded-pill fs-6 px-3">{{ assignments_pending }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseAssignPending" class="accordion-collapse collapse" aria-labelledby="headingAssignPending" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if assignments_pending_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for assign in assignments_pending_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-warning"></i> {{ assign.title }}</div>
+                                                            <div class="small text-muted ms-3">{{ assign.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if assign.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ assign.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- PROJECTS SECTION -->
+                        <h6 class="fw-bold text-muted mb-3 mt-4">PROJECTS</h6>
+                        
+                        <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                            <h2 class="accordion-header" id="headingProjAccepted">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProjAccepted" aria-expanded="false" aria-controls="collapseProjAccepted">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-kanban text-success me-2"></i> Accepted</span>
+                                        <span class="badge bg-success rounded-pill fs-6 px-3">{{ projects_accepted }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseProjAccepted" class="accordion-collapse collapse" aria-labelledby="headingProjAccepted" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if projects_accepted_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for sub in projects_accepted_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-success"></i> {{ sub.project.title }}</div>
+                                                            <div class="small text-muted ms-3">{{ sub.project.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if sub.project.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ sub.project.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border rounded-3 mb-2 overflow-hidden">
+                            <h2 class="accordion-header" id="headingProjRejected">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProjRejected" aria-expanded="false" aria-controls="collapseProjRejected">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-kanban text-danger me-2"></i> Rejected</span>
+                                        <span class="badge bg-danger rounded-pill fs-6 px-3">{{ projects_rejected }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseProjRejected" class="accordion-collapse collapse" aria-labelledby="headingProjRejected" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if projects_rejected_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for sub in projects_rejected_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-danger"></i> {{ sub.project.title }}</div>
+                                                            <div class="small text-muted ms-3">{{ sub.project.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if sub.project.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ sub.project.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item border rounded-3 border-start border-warning border-4 overflow-hidden">
+                            <h2 class="accordion-header" id="headingProjPending">
+                                <button class="accordion-button collapsed p-3 bg-light" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProjPending" aria-expanded="false" aria-controls="collapseProjPending">
+                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                        <span class="fw-semibold"><i class="bi bi-hourglass-split text-warning me-2"></i> Pending (Not Submitted)</span>
+                                        <span class="badge bg-warning text-dark rounded-pill fs-6 px-3">{{ projects_pending }}</span>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapseProjPending" class="accordion-collapse collapse" aria-labelledby="headingProjPending" data-bs-parent="#academicAccordion">
+                                <div class="accordion-body p-2 bg-white">
+                                    {% if projects_pending_qs %}
+                                        <ul class="list-group list-group-flush">
+                                            {% for proj in projects_pending_qs %}
+                                                <li class="list-group-item border-0 py-2 border-bottom">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><i class="bi bi-dot text-warning"></i> {{ proj.title }}</div>
+                                                            <div class="small text-muted ms-3">{{ proj.course.title }}</div>
+                                                        </div>
+                                                        <div class="text-end small">
+                                                            {% if proj.due_date %}
+                                                            <span class="text-muted d-block"><i class="bi bi-calendar me-1"></i>Due: {{ proj.due_date|date:"M d, Y" }}</span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <div class="text-muted small p-2">None</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ action }} Course - Tution4All{% endblock %}
+
+{% block content %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<style>
+    .select2-container--default .select2-selection--single {
+        height: calc(3.5rem + 2px);
+        padding: 1rem 0.75rem;
+        border-radius: 1rem;
+        border: 1px solid #ced4da;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 1.5;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: calc(3.5rem + 2px);
+    }
+</style>
+
+<div class="row justify-content-center py-4">
+    <div class="col-md-10">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="fw-bold text-primary m-0">{{ action }} Course</h2>
+            <a href="{% url 'core:dashboard' %}" class="btn btn-outline-secondary rounded-pill">Back to Dashboard</a>
+        </div>
+        
+        <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-body p-4">
+                <form method="post" enctype="multipart/form-data" id="course-form">
+                    {% csrf_token %}
+                    
+                    <div id="courses-container">
+                        <div class="course-block mb-4 p-4 border rounded-4 bg-light position-relative" data-index="0">
+                            {% if action == 'Create' %}
+                            <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-3 rounded-circle remove-course-btn" style="display: none;" title="Remove this course">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                            {% endif %}
+                            
+                            <h4 class="fw-bold text-primary mb-4 course-heading">Course Details</h4>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Select Subject <span class="text-danger">*</span></label>
+                                <select name="category[]" class="form-select category-select" required>
+                                    <option value=""></option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.id }}" {% if course and course.category.id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Course Description</label>
+                                <textarea name="course_description[]" class="form-control" rows="3" placeholder="Describe what this course covers...">{% if course %}{{ course.description }}{% endif %}</textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">About your teaching</label>
+                                <textarea name="about_teaching[]" class="form-control" rows="2" placeholder="Describe your teaching style and methods">{% if course %}{{ course.about_teaching }}{% endif %}</textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Skills you teach</label>
+                                <textarea name="skills[]" class="form-control" rows="2" placeholder="E.g., Problem solving, Critical thinking">{% if course %}{{ course.skills }}{% endif %}</textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Your Experience</label>
+                                <textarea name="experience[]" class="form-control" rows="2" placeholder="Your experience related to this subject">{% if course %}{{ course.experience }}{% endif %}</textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">hr per student fees (₹)</label>
+                                <input type="number" step="0.01" name="hourly_fee[]" class="form-control hourly-fee" placeholder="E.g., 500" value="{% if course %}{{ course.hourly_fee }}{% endif %}" oninput="calculateTotal(this)">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">total duration(hour)</label>
+                                <input type="number" name="total_duration_hours[]" class="form-control total-duration" placeholder="E.g., 20" value="{% if course %}{{ course.total_duration_hours }}{% endif %}" oninput="calculateTotal(this)">
+                            </div>
+                            
+
+                            
+                            <div class="mb-3">
+                                <label class="form-label">total amount (₹)</label>
+                                <input type="number" step="0.01" name="total_amount[]" class="form-control total-amount" placeholder="Auto calculated" value="{% if course %}{{ course.total_amount }}{% endif %}" readonly>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Intro Video (Optional)</label>
+                                <input type="file" name="intro_video_0" accept="video/*" class="form-control">
+                                {% if course and course.intro_video %}
+                                <small class="text-success d-block mt-1">Currently uploaded: {{ course.intro_video.name|slice:"15:" }}</small>
+                                {% endif %}
+                                <small class="text-muted">A short video introducing yourself and the course.</small>
+                            </div>
+                            
+                            <div class="certificates-block mt-4 p-3 border rounded-3 bg-white">
+                                <label class="form-label fw-bold text-dark">Upload Certificates (PDF/Images)</label>
+                                <div class="certificate-inputs-wrapper">
+                                    <div class="certificate-entry d-flex gap-2 mb-2">
+                                        <input type="text" name="cert_title_0[]" class="form-control" placeholder="Document Name (e.g. Degree)">
+                                        <input type="file" name="cert_file_0[]" class="form-control">
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary mt-2 rounded-pill add-cert-btn">
+                                    <i class="bi bi-plus-lg"></i> Add Another Document
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if action == 'Create' %}
+                    <div class="d-flex justify-content-between mb-4">
+                        <button type="button" id="add-course-btn" class="btn btn-outline-success rounded-pill fw-bold">
+                            <i class="bi bi-plus-circle"></i> Add Another Course
+                        </button>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="alert alert-info mt-3 rounded-4">
+                        <i class="bi bi-info-circle-fill me-2"></i> Your course will be sent to the Admin for approval before going live.
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm">
+                            {% if action == 'Edit' %}Save Changes{% else %}Submit for Approval{% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Include Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    function calculateTotal(element) {
+        var block = $(element).closest('.course-block');
+        var hourlyFee = parseFloat(block.find('.hourly-fee').val()) || 0;
+        var duration = parseFloat(block.find('.total-duration').val()) || 0;
+        var total = hourlyFee * duration;
+        block.find('.total-amount').val(total.toFixed(2));
+    }
+</script>
+<script>
+    $(document).ready(function() {
+        // Initialize Select2 on the first category select
+        $('.category-select').select2({
+            placeholder: "Search and select a subject...",
+            allowClear: true,
+            width: '100%'
+        });
+
+        let courseCount = 1;
+
+        // Add Certificate Button Delegation
+        $(document).on('click', '.add-cert-btn', function() {
+            const block = $(this).closest('.certificates-block');
+            const wrapper = block.find('.certificate-inputs-wrapper');
+            const courseIndex = block.closest('.course-block').data('index');
+            
+            const newEntry = `
+                <div class="certificate-entry d-flex gap-2 mb-2">
+                    <input type="text" name="cert_title_${courseIndex}[]" class="form-control" placeholder="Document Name (e.g. Degree)">
+                    <input type="file" name="cert_file_${courseIndex}[]" class="form-control">
+                </div>
+            `;
+            wrapper.append(newEntry);
+        });
+
+        {% if action == 'Create' %}
+        // Add Another Course
+        $('#add-course-btn').click(function() {
+            // Destroy select2 on the original element before cloning so the clone doesn't copy the generated UI elements
+            $('.category-select').select2('destroy');
+
+            const firstBlock = $('.course-block').first();
+            const clone = firstBlock.clone();
+            
+            // Update indices and names
+            const newIndex = courseCount++;
+            clone.attr('data-index', newIndex);
+            clone.find('.course-heading').text(`Course Details #${newIndex + 1}`);
+            
+            // Show remove button
+            clone.find('.remove-course-btn').show();
+            
+            // Clear inputs in the clone
+            clone.find('input, textarea').val('');
+            clone.find('select').prop('selectedIndex', 0);
+            
+            // Update certificate input names for the new index
+            clone.find('input[name^="cert_title"]').attr('name', `cert_title_${newIndex}[]`);
+            clone.find('input[name^="cert_file"]').attr('name', `cert_file_${newIndex}[]`);
+            
+            // Remove extra certificate rows if any were added to the first block
+            clone.find('.certificate-entry:not(:first)').remove();
+            
+            // Append clone
+            $('#courses-container').append(clone);
+            
+            // Re-initialize select2 on all selects
+            $('.category-select').select2({
+                placeholder: "Search and select a subject...",
+                allowClear: true,
+                width: '100%'
+            });
+            
+            // Update the intro video name
+            clone.find('input[type="file"][name^="intro_video"]').attr('name', `intro_video_${newIndex}`);
+        });
+
+        // Remove Course
+        $(document).on('click', '.remove-course-btn', function() {
+            $(this).closest('.course-block').remove();
+            
+            // Re-number headings (optional)
+            $('.course-block').each(function(idx) {
+                if ($('.course-block').length > 1) {
+                    $(this).find('.course-heading').text(`Course Details #${idx + 1}`);
+                } else {
+                    $(this).find('.course-heading').text(`Course Details`);
+                }
+            });
+        });
+        {% endif %}
+    });
+</script>
+{% endblock %}

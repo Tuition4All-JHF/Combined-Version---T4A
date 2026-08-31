@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}Enroll in {{ course.title }} - Tution4All{% endblock %}
+
+{% block extra_css %}
+<style>
+    .package-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 2px solid transparent;
+        cursor: pointer;
+    }
+    .package-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-color: var(--bs-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row py-5">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-primary mb-4">Complete Enrollment: {{ course.title }}</h2>
+        
+        <div class="mb-5">
+            <h4 class="fw-bold mb-3">Available Schedule Packages</h4>
+            <p class="text-muted small mb-4">Choose a schedule package that works for you. Private sessions are exclusively yours once booked.</p>
+            
+            <form id="enroll-form" method="post" action="{% url 'courses:enroll' course.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="student_id" value="{{ student.id }}">
+                <input type="hidden" name="recurring_group_id" id="input-group-id">
+                
+                <div class="row g-4">
+                    {% regroup course.live_classes.all by recurring_group_id as grouped_slots %}
+                    {% for group in grouped_slots %}
+                        {% with lc=group.list.0 %}
+                        
+                        {# Check if the package is available to be shown #}
+                        {% if not lc.has_ended and group.grouper %}
+                            
+                            {# For Private classes, if any slot is booked, hide the whole package #}
+                            {% if lc.class_type == 'private' %}
+                                {% with booked=False %}
+                                    {% for s in group.list %}
+                                        {% if s.bookings.exists %}
+                                            {# It's booked, skip #}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {# Django templates do not support variable reassignment easily, so we handle it gracefully below by doing the check directly #}
+                                {% endwith %}
+                            {% endif %}
+                            
+                            <div class="col-md-6 package-item" data-group-id="{{ group.grouper }}">
+                                <div class="card package-card h-100 shadow-sm border border-2 border-transparent" onclick="selectPackage('{{ group.grouper }}')" style="cursor: pointer; transition: 0.2s; border-radius: 16px;">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h6 class="fw-bold text-primary mb-0" style="font-size: 1.1rem;">{{ course.title }}</h6>
+                                            {% if lc.class_type == 'public' %}
+                                                <span class="badge bg-light text-dark rounded-pill border px-3 py-2"><i class="bi bi-people-fill me-1 text-info"></i> Public</span>
+                                            {% else %}
+                                                <span class="badge bg-light text-dark rounded-pill border px-3 py-2"><i class="bi bi-person-fill me-1 text-primary"></i> Private</span>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-alarm text-danger me-2 fs-5"></i>
+                                            <span class="fw-bold text-secondary">{{ lc.start_time|time:"h:i A" }} - {{ lc.end_time|time:"h:i A" }}</span>
+                                        </div>
+                                        
+                                        <div class="d-flex align-items-center mb-3">
+                                            <i class="bi bi-arrow-repeat me-2 fs-5" style="color: #f39c12;"></i>
+                                            <span class="fw-bold package-days" style="color: #f39c12;" data-days="{% for s in group.list %}{{ s.start_time|date:'D' }},{% endfor %}" data-count="{{ group.list|length }}">
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="text-center mt-3">
+                                            <span class="btn btn-outline-primary rounded-pill fw-bold select-indicator w-100 py-2">Select</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        {% endif %}
+                        {% endwith %}
+                        {% endwith %}
+                    {% empty %}
+                        <div class="col-12">
+                            <div class="alert alert-warning py-4 text-center">
+                                No available schedules at the moment. Please contact the teacher.
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-lg border-0 rounded-4 sticky-top" style="top: 100px;">
+            <div class="card-body p-4 text-center">
+                <div class="mb-4">
+                    {% if course.teacher.photo %}
+                    <img src="{{ course.teacher.photo.url }}" class="rounded-circle shadow-sm border border-3 border-primary" width="100" height="100" style="object-fit: cover;">
+                    {% else %}
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center text-primary shadow-sm border border-3 border-primary mx-auto" style="width: 100px; height: 100px; font-size: 2.5rem; font-weight: bold;">
+                        {{ course.teacher.user.username|make_list|first|upper }}
+                    </div>
+                    {% endif %}
+                </div>
+                <h4 class="fw-bold mb-1">{{ course.teacher.user.get_full_name|default:course.teacher.user.username }}</h4>
+                <p class="text-muted mb-3">{{ course.category.name }} Expert</p>
+
+                <div class="card bg-light border-0 rounded-3 p-3 text-start mb-4">
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small"><i class="bi bi-clock me-1"></i>Course Total Duration</span>
+                        <span class="fw-bold small">{{ course.total_duration_hours }} hr(s)</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted small"><i class="bi bi-currency-rupee me-1"></i>Rate (per hr)</span>
+                        <span class="fw-bold small" id="hourly-rate">
+                            {% if course.admin_hourly_fee and course.admin_hourly_fee > 0 %}
+                                {{ course.admin_hourly_fee }}
+                            {% else %}
+                                {{ course.hourly_fee }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 mt-1">
+                        <span class="text-muted small">Student</span>
+                        <span class="fw-bold small">{{ student.user.get_full_name|default:student.user.username }}</span>
+                    </div>
+                </div>
+
+                <div id="selection-summary" class="d-none mb-3">
+                    <button type="button" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold shadow-sm py-3" onclick="submitEnrollment()"><i class="bi bi-lightning-charge-fill me-2"></i> Confirm & Book</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectPackage(groupId) {
+        document.querySelectorAll('.package-card').forEach(el => {
+            el.classList.remove('border-primary', 'bg-primary-subtle');
+            el.classList.add('border-transparent');
+            const btn = el.querySelector('.select-indicator');
+            if (btn) {
+                btn.classList.remove('btn-primary', 'text-white');
+                btn.classList.add('btn-outline-primary');
+                btn.innerText = 'Select';
+            }
+        });
+        
+        const card = document.querySelector(`.package-item[data-group-id="${groupId}"] .package-card`);
+        card.classList.remove('border-transparent');
+        card.classList.add('border-primary', 'bg-primary-subtle');
+        const btn = card.querySelector('.select-indicator');
+        if (btn) {
+            btn.classList.remove('btn-outline-primary');
+            btn.classList.add('btn-primary', 'text-white');
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Selected';
+        }
+        
+        document.getElementById('input-group-id').value = groupId;
+        document.getElementById('selection-summary').classList.remove('d-none');
+    }
+
+    function submitEnrollment() {
+        document.getElementById('enroll-form').submit();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.package-days').forEach(el => {
+            let days = el.getAttribute('data-days').split(',').filter(d => d.trim() !== '');
+            let uniqueDays = [...new Set(days)];
+            const dayOrder = { "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6, "Sun": 7 };
+            uniqueDays.sort((a, b) => (dayOrder[a] || 8) - (dayOrder[b] || 8));
+            
+            let count = el.getAttribute('data-count');
+            el.innerHTML = uniqueDays.join(', ') + ' <span class="text-muted fw-normal ms-1">(' + count + (count == 1 ? ' class)' : ' classes)') + '</span>';
+        });
+    });
+</script>
+{% endblock %}

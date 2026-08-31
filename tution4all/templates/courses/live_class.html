@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ live_class.title }} - Live Class{% endblock %}
+
+{% block content %}
+<!-- Full Screen Jitsi Wrapper -->
+<div id="jitsi-container" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1050; background: #000;"></div>
+
+<!-- Custom Whiteboard Iframe -->
+<iframe id="whiteboard-frame" src="{% url 'courses:custom_whiteboard' live_class.id %}?role={{ request.user.role }}&username={{ request.user.get_full_name|default:request.user.username|urlencode }}" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1051; background: #fff; display: none; border: none;"></iframe>
+
+<!-- Floating Toggle Button -->
+<button id="toggle-wb-btn" style="position: fixed; top: 20px; left: 20px; z-index: 1052; padding: 12px 24px; border-radius: 8px; background: rgba(0, 0, 0, 0.6); color: white; border: 1px solid rgba(255, 255, 255, 0.2); font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); transition: all 0.2s ease;">
+    🎨 Open Whiteboard
+</button>
+
+{% if request.user.role == 'student' %}
+<!-- Student Leave Button -->
+<button id="leave-class-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1052; padding: 12px 24px; border-radius: 8px; background: rgba(220, 38, 38, 0.9); color: white; border: 1px solid rgba(255, 255, 255, 0.2); font-weight: 600; font-size: 14px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.5); backdrop-filter: blur(4px); transition: all 0.2s ease;">
+    🔴 Leave Class
+</button>
+{% endif %}
+
+<script src="https://{{ jitsi_domain }}/external_api.js"></script>
+<script>
+    const roomId = "{{ live_class.room_name }}";
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        let wbOpen = false;
+        const wbBtn = document.getElementById('toggle-wb-btn');
+        const wbFrame = document.getElementById('whiteboard-frame');
+        
+        wbBtn.addEventListener('click', () => {
+            wbOpen = !wbOpen;
+            if (wbOpen) {
+                wbFrame.style.display = 'block';
+                wbBtn.innerHTML = '📷 Back to Video';
+            } else {
+                wbFrame.style.display = 'none';
+                wbBtn.innerHTML = '🎨 Open Whiteboard';
+            }
+        });
+
+        const domain = "meet.element.io"; // Cleanest server, no ads, no watermarks
+        
+        let buttons = [
+            'camera', 'chat', 'desktop', 'download', 'filmstrip', 'fullscreen',
+            'microphone', 'participants-pane', 'profile', 'raisehand',
+            'settings', 'shareaudio', 'stats', 'tileview', 'toggle-camera', 'videoquality',
+            'whiteboard'
+            {% if request.user.role == 'teacher' %}
+            , 'hangup', 'mute-everyone', 'security'
+            {% endif %}
+        ];
+
+        const options = {
+            roomName: roomId,
+            width: "100%",
+            height: "100%",
+            parentNode: document.getElementById("jitsi-container"),
+            userInfo: {
+                displayName: "{{ request.user.get_full_name|default:request.user.username|escapejs }}"
+            },
+            configOverwrite: {
+                prejoinPageEnabled: false,
+                prejoinConfig: { enabled: false },
+                startWithAudioMuted: false, 
+                startWithVideoMuted: false,
+                disableDeepLinking: true,
+                disableInviteFunctions: true,
+                disableNotifications: true,
+                disabledNotifications: ['notify.newDeviceAudioTitle', 'notify.newDeviceCameraTitle'],
+                whiteboard: { enabled: true, collabServerBaseUrl: 'https://excalidraw-backend.excalidraw.com' },
+                toolbarButtons: buttons,
+                disableModeratorIndicator: true,
+                remoteVideoMenu: {
+                    disableKick: true,
+                    disableGrantModerator: true
+                },
+                participantsPane: {
+                    hideModeratorSettingsTab: true,
+                    hideMoreActionsButton: true,
+                    hideMuteAllButton: true
+                }
+            },
+            interfaceConfigOverwrite: {
+                SHOW_JITSI_WATERMARK: false,
+                SHOW_BRAND_WATERMARK: false,
+                SHOW_WATERMARK_FOR_GUESTS: false,
+                DEFAULT_LOGO_URL: "",
+                DEFAULT_WELCOME_PAGE_LOGO_URL: "",
+                HIDE_DEEP_LINKING_LOGO: true,
+                SHOW_PROMOTIONAL_CLOSE_PAGE: false,
+                HIDE_INVITE_MORE_HEADER: true
+            }
+        };
+
+        const api = new JitsiMeetExternalAPI(domain, options);
+
+        api.addEventListener('videoConferenceJoined', () => {
+            api.executeCommand('subject', ' ');
+            api.executeCommand('toggleTileView');
+        });
+
+        const handleExit = () => {
+            try { api.dispose(); } catch (e) { console.error(e); }
+            {% if request.user.role == 'student' %}
+                try { navigator.sendBeacon("{% url 'courses:mark_attendance_exit' live_class.id %}"); } catch(e) {}
+                window.location.href = "{% url 'courses:detail' live_class.course.id %}";
+            {% elif request.user.role == 'teacher' %}
+                window.location.href = "{% url 'courses:post_class_summary' live_class.id %}";
+            {% else %}
+                window.location.href = "/";
+            {% endif %}
+        };
+
+        api.addEventListener('videoConferenceLeft', handleExit);
+        api.addEventListener('readyToClose', handleExit);
+
+        {% if request.user.role == 'student' %}
+        document.getElementById('leave-class-btn').addEventListener('click', handleExit);
+        {% endif %}
+    });
+</script>
+{% endblock %}

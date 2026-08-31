@@ -1,0 +1,615 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard - Tution4All{% endblock %}
+
+{% block content %}
+<!-- Include DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body text-center p-4">
+                {% if request.user.teacher_profile.photo %}
+                    <img src="{{ request.user.teacher_profile.photo.url }}" class="rounded-circle mb-3 shadow-sm" width="100" height="100" style="object-fit: cover;">
+                {% else %}
+                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3 text-white shadow-sm" style="width: 100px; height: 100px; font-size: 2.5rem; font-family: 'Outfit', sans-serif;">
+                        {{ request.user.username|make_list|first|upper }}
+                    </div>
+                {% endif %}
+                <h4 class="fw-bold">{{ request.user.get_full_name|default:request.user.username }}</h4>
+                <p class="text-muted mb-2">Educator</p>
+                {% if not request.user.teacher_profile.is_approved %}
+                    <span class="badge bg-warning text-dark border border-warning px-3 py-2 rounded-pill"><i class="bi bi-hourglass-split"></i> Pending Approval</span>
+                {% else %}
+                    <span class="badge bg-success border border-success px-3 py-2 rounded-pill"><i class="bi bi-check-circle"></i> Approved</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="list-group shadow-sm border-0" id="teacherTabs" role="tablist">
+            <a class="list-group-item list-group-item-action active fw-bold border-0 py-3" id="tab-overview" data-bs-toggle="list" href="#overview" role="tab"><i class="bi bi-grid-1x2-fill me-2"></i> Overview</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" id="tab-courses" data-bs-toggle="list" href="#courses" role="tab"><i class="bi bi-journal-plus me-2"></i> Manage Courses</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" id="tab-students" data-bs-toggle="list" href="#students" role="tab"><i class="bi bi-people-fill me-2"></i> Students & Parents</a>
+            <a href="{% url 'courses:teacher_schedule_view' %}" class="list-group-item list-group-item-action fw-bold border-0 py-3 text-primary"><i class="bi bi-calendar3 me-2"></i> My Schedule</a>
+            <a href="{% url 'courses:teacher_calendar_view' %}" class="list-group-item list-group-item-action fw-bold border-0 py-3 text-primary"><i class="bi bi-calendar-range me-2"></i> View Calendar</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" id="tab-live" data-bs-toggle="list" href="#live" role="tab"><i class="bi bi-camera-video-fill me-2"></i> Live Sessions</a>
+            <a href="{% url 'core:complaints' %}" class="list-group-item list-group-item-action fw-bold border-0 py-3 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i> Complaints</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" id="tab-earnings" data-bs-toggle="list" href="#earnings" role="tab"><i class="bi bi-wallet2 me-2"></i> Earnings</a>
+            <a class="list-group-item list-group-item-action fw-bold border-0 py-3" id="tab-profile" data-bs-toggle="list" href="#profile" role="tab"><i class="bi bi-person-gear me-2"></i> Edit Profile</a>
+            <a href="{% url 'chat:index' %}" class="list-group-item list-group-item-action fw-bold border-0 py-3 text-success bg-light d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-whatsapp me-2"></i> Open Web Chat</span>
+                {% if unread_chat_count > 0 %}
+                <span class="badge bg-danger rounded-pill">{{ unread_chat_count }}</span>
+                {% endif %}
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-9">
+        <div class="tab-content" id="nav-tabContent">
+            
+            <!-- OVERVIEW TAB -->
+            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                <h2 class="fw-bold text-primary mb-4 brand-font">Teacher Dashboard</h2>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-journal-album position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75 brand-font">My Courses</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">{{ request.user.teacher_profile.courses.count }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card text-white shadow-sm border-0 rounded-4 h-100" style="background: linear-gradient(135deg, #4cc9f0 0%, #4895ef 100%);">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-people position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75">Total Students</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">{{ total_students }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-4">
+                        <div class="card text-white shadow-sm border-0 rounded-4 h-100" style="background: linear-gradient(135deg, #f72585 0%, #b5179e 100%);">
+                            <div class="card-body p-4 position-relative overflow-hidden">
+                                <i class="bi bi-currency-dollar position-absolute" style="font-size: 5rem; opacity: 0.1; right: -10px; bottom: -20px;"></i>
+                                <h5 class="card-title fw-bold opacity-75">Total Earnings</h5>
+                                <p class="card-text display-4 fw-bolder mt-3">₹ {{ total_earnings }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row mt-4">
+                    <!-- Upcoming Live Classes Widget -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold m-0"><i class="bi bi-camera-video text-danger me-2"></i> Upcoming Live Classes</h5>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill" onclick="document.getElementById('tab-live').click()">View All</button>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    {% for lc in upcoming_live_classes %}
+                                    <div class="list-group-item px-0 py-3 border-bottom-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <h6 class="fw-bold mb-0 text-truncate">{{ lc.title }}</h6>
+                                            <span class="badge bg-info text-dark ms-2" style="white-space: nowrap;">In {{ lc.start_time|timeuntil }}</span>
+                                        </div>
+                                        <p class="text-muted small mb-2"><i class="bi bi-calendar-event"></i> {{ lc.start_time|date:"M d, Y" }} at {{ lc.start_time|time:"h:i A" }}</p>
+                                        <div class="join-container d-inline-block" data-start-time="{{ lc.start_time|date:'c' }}" data-end-time="{{ lc.end_time|date:'c' }}" data-join-url="{% url 'courses:join_live_class' lc.id %}">
+                                            <button class="btn btn-sm btn-danger rounded-pill px-3 disabled join-btn"><i class="bi bi-play-fill"></i> <span class="countdown-text">Starts in...</span></button>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center py-4">
+                                        <p class="text-muted mb-0">No upcoming classes scheduled.</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Submissions Widget -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card shadow-sm border-0 rounded-4 h-100">
+                            <div class="card-header bg-white border-0 pt-4 pb-0 d-flex justify-content-between align-items-center">
+                                <h5 class="fw-bold m-0"><i class="bi bi-file-earmark-check text-success me-2"></i> Recent Submissions</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    {% for sub in recent_submissions %}
+                                    <div class="list-group-item px-0 py-3 border-bottom-0">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <h6 class="fw-bold mb-0 text-truncate">
+                                                {% if sub.assignment %}{{ sub.assignment.title }}{% else %}{{ sub.project.title }}{% endif %}
+                                            </h6>
+                                            {% if sub.status == 'submitted' %}
+                                                <span class="badge bg-warning text-dark ms-2">Needs Grading</span>
+                                            {% elif sub.status == 'accepted' %}
+                                                <span class="badge bg-success ms-2">Graded</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary ms-2">{{ sub.get_status_display }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <p class="text-muted small mb-2">By {{ sub.student.user.get_full_name|default:sub.student.user.username }} on {{ sub.submitted_at|date:"M d, Y" }}</p>
+                                        <a href="{% if sub.assignment %}{% url 'courses:teacher_view_submissions' 'assignment' sub.assignment.id %}{% else %}{% url 'courses:teacher_view_submissions' 'project' sub.project.id %}{% endif %}" class="btn btn-sm btn-outline-success rounded-pill px-3">Review Work</a>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center py-4">
+                                        <p class="text-muted mb-0">No recent submissions found.</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COURSES TAB -->
+            <div class="tab-pane fade" id="courses" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold m-0 text-primary">My Courses</h4>
+                    <a href="{% url 'courses:teacher_create_course' %}" class="btn btn-primary rounded-pill"><i class="bi bi-plus-lg"></i> Create Course</a>
+                </div>
+                <div class="row">
+                    {% for course in request.user.teacher_profile.courses.all %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card shadow-sm border-0 rounded-4 h-100 position-relative">
+                            {% if course.status == 'pending' %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark z-index-1 mt-2 me-2">Pending Approval</span>
+                            {% elif course.status == 'rejected' %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger z-index-1 mt-2 me-2">Rejected</span>
+                            {% elif course.status == 'approved' %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-success z-index-1 mt-2 me-2">Approved</span>
+                            {% endif %}
+                            <div class="card-body p-4 d-flex flex-column">
+                                <h5 class="card-title fw-bold text-primary">{{ course.category.name }}</h5>
+                                <p class="text-muted small mb-3"><i class="bi bi-people-fill me-1"></i> Students Enrolled: {{ course.enrollments.count }}</p>
+                                
+                                {% if course.status == 'rejected' and course.admin_comment %}
+                                <div class="alert alert-danger p-2 small mb-3">
+                                    <strong>Admin Note:</strong> {{ course.admin_comment }}
+                                </div>
+                                {% elif course.status == 'approved' and course.admin_comment %}
+                                <div class="alert alert-success p-2 small mb-3">
+                                    <strong>Admin Note:</strong> {{ course.admin_comment }}
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mt-auto d-flex gap-2">
+                                    <a href="{% url 'courses:teacher_manage_course' course.id %}" class="btn btn-primary rounded-pill btn-sm w-50"><i class="bi bi-gear"></i> Manage</a>
+                                    <a href="{% url 'courses:teacher_edit_course' course.id %}" class="btn btn-outline-primary rounded-pill btn-sm {% if course.status == 'rejected' %}w-50{% else %}w-25{% endif %}">
+                                        <i class="bi bi-pencil"></i> {% if course.status == 'rejected' %}Resubmit{% endif %}
+                                    </a>
+                                    <form method="post" action="{% url 'courses:teacher_delete_course' course.id %}" class="{% if course.status == 'rejected' %}w-auto{% else %}w-25{% endif %}" onsubmit="return confirm('Are you sure you want to delete this course?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger rounded-pill btn-sm w-100"><i class="bi bi-trash"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0 rounded-4">
+                            <div class="card-body p-4 text-center text-muted">
+                                <i class="bi bi-journal-x fs-1 d-block mb-3"></i>
+                                <p class="mb-0">You have not created any courses yet.</p>
+                                <a href="{% url 'courses:teacher_create_course' %}" class="btn btn-primary rounded-pill mt-3"><i class="bi bi-plus-lg"></i> Create Your First Course</a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- STUDENTS TAB -->
+            <div class="tab-pane fade" id="students" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-bold m-0 text-primary">Enrolled Students</h4>
+                </div>
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <table class="table table-hover align-middle mb-0 datatable w-100">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Course</th>
+                                <th>Parent</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for data in unique_students %}
+                            <tr>
+                                <td class="fw-bold">
+                                    {% if data.student.photo %}
+                                    <img src="{{ data.student.photo.url }}" class="rounded-circle me-2" width="30" height="30" style="object-fit: cover;">
+                                    {% endif %}
+                                    {{ data.student.user.get_full_name|default:data.student.user.username }}
+                                </td>
+                                <td>
+                                    {% for c in data.courses %}
+                                    <span class="badge bg-light text-dark border me-1">{{ c.title }}</span>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    {% if data.student.parent %}
+                                        {{ data.student.parent.user.get_full_name|default:data.student.parent.user.username }}
+                                    {% else %}
+                                        <span class="text-muted small">No Parent Linked</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'courses:teacher_student_detail' data.student.id %}" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-graph-up-arrow"></i> View Progress</a>
+                                    <a href="{% url 'chat:chat_with' data.student.user.id %}" class="btn btn-sm btn-outline-success rounded-pill ms-1"><i class="bi bi-whatsapp"></i> Chat Student</a>
+                                    {% if data.student.parent %}
+                                    <a href="{% url 'chat:chat_with' data.student.parent.user.id %}" class="btn btn-sm btn-success rounded-pill ms-1"><i class="bi bi-whatsapp"></i> Chat Parent</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- LIVE SESSIONS TAB -->
+            <div class="tab-pane fade" id="live" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="fw-bold m-0 text-primary"><i class="bi bi-camera-video-fill me-2"></i> Live Sessions</h4>
+                </div>
+
+                <ul class="nav nav-pills mb-4" id="liveSessionsSubTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill px-4 me-2 fw-bold" id="upcoming-sub-tab" data-bs-toggle="pill" data-bs-target="#upcoming-sub" type="button" role="tab" aria-controls="upcoming-sub" aria-selected="true">
+                            Upcoming Sessions
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill px-4 fw-bold" id="ended-sub-tab" data-bs-toggle="pill" data-bs-target="#ended-sub" type="button" role="tab" aria-controls="ended-sub" aria-selected="false">
+                            Ended Sessions
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="liveSessionsSubTabsContent">
+                    <!-- Upcoming Sessions Table -->
+                    <div class="tab-pane fade show active" id="upcoming-sub" role="tabpanel" aria-labelledby="upcoming-sub-tab">
+                <div class="card shadow-sm border-0 rounded-4 p-4 mb-5">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle datatable w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Title & Course</th>
+                                    <th>Scheduled Date</th>
+                                    <th>Time</th>
+                                    <th>Time Remaining</th>
+                                    <th>Bookings</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lc in all_upcoming_live_classes %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ lc.title }}</div>
+                                        <div class="small text-muted">{{ lc.course.category.name }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="d-none">{{ lc.start_time|date:"YmdHis"|default:"00000000000000" }}</span> <!-- For sorting -->
+                                        {{ lc.start_time|date:"M d, Y"|default:"Not scheduled" }}
+                                    </td>
+                                    <td>{{ lc.start_time|time:"h:i A" }} to {{ lc.end_time|time:"h:i A" }}</td>
+                                    <td><span class="badge bg-info text-dark">In {{ lc.start_time|timeuntil }}</span></td>
+                                    <td>{{ lc.bookings.count }} / {{ lc.max_capacity }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <div class="join-container d-inline-block" data-start-time="{{ lc.start_time|date:'c' }}" data-end-time="{{ lc.end_time|date:'c' }}" data-join-url="{% url 'courses:join_live_class' lc.id %}">
+                                                <button class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-bold disabled join-btn"><i class="bi bi-play-fill"></i> <span class="countdown-text">Starts in...</span></button>
+                                            </div>
+                                            {% if not lc.bookings.exists %}
+                                            <a href="{% url 'courses:teacher_delete_live_class' lc.id %}" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="return confirm('Are you sure you want to delete this live class?')"><i class="bi bi-trash"></i></a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                    </div>
+
+                    <!-- Ended Sessions Table -->
+                    <div class="tab-pane fade" id="ended-sub" role="tabpanel" aria-labelledby="ended-sub-tab">
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle datatable-ended w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Title & Course</th>
+                                    <th>Held On</th>
+                                    <th>Bookings</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for lc in all_ended_live_classes %}
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold">{{ lc.title }}</div>
+                                        <div class="small text-muted">{{ lc.course.category.name }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="d-none">{% if lc.actual_end_time %}{{ lc.actual_end_time|date:"YmdHis" }}{% else %}{{ lc.start_time|date:"YmdHis"|default:"00000000000000" }}{% endif %}</span> <!-- For sorting -->
+                                        {{ lc.start_time|date:"M d, Y"|default:"Not scheduled" }} at {{ lc.start_time|time:"h:i A" }}
+                                    </td>
+                                    <td>{{ lc.bookings.count }} / {{ lc.max_capacity }}</td>
+                                    <td>
+                                        <a href="{% url 'courses:view_class_transcript' lc.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3"><i class="bi bi-card-text"></i> Summary</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                    </div>
+                </div>
+            </div>
+
+        <!-- EARNINGS TAB -->
+            <div class="tab-pane fade" id="earnings" role="tabpanel">
+                <h4 class="fw-bold m-0 text-primary mb-3">Earnings Breakdown</h4>
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <table class="table table-hover align-middle mb-0 datatable w-100">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Course</th>
+                                <th>Enrolled Students</th>
+                                <th>Course Price</th>
+                                <th>Total Generated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in request.user.teacher_profile.courses.all %}
+                            <tr>
+                                <td class="fw-bold">{{ course.category.name }}</td>
+                                <td>{{ course.enrollments.count }}</td>
+                                <td>₹ {{ course.teacher_price }}</td>
+                                <td class="fw-bold text-success">
+                                    ₹ {% widthratio course.enrollments.count 1 course.teacher_price %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="table-light fw-bold">
+                                <td colspan="3" class="text-end">Total Expected Revenue:</td>
+                                <td class="text-success fs-5">₹ {{ total_earnings }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PROFILE EDIT TAB -->
+            <div class="tab-pane fade" id="profile" role="tabpanel">
+                <h4 class="fw-bold m-0 text-primary mb-4">Edit Profile & Qualifications</h4>
+                <div class="card shadow-sm border-0 rounded-4 p-4">
+                    <form method="post" action="{% url 'core:edit_teacher_profile' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="row mb-3">
+                            <div class="col-md-4 text-center">
+                                {% if request.user.teacher_profile.photo %}
+                                    <img src="{{ request.user.teacher_profile.photo.url }}" class="rounded-circle mb-2 img-thumbnail" width="150" height="150" style="object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 150px; height: 150px;">
+                                        <i class="bi bi-person text-secondary fs-1"></i>
+                                    </div>
+                                {% endif %}
+                                <input class="form-control form-control-sm mt-2" type="file" name="photo" accept="image/*">
+                                <small class="text-muted">Profile Photo</small>
+                                
+                                <hr class="my-3">
+                                
+                                {% if request.user.teacher_profile.profile_video %}
+                                    <div class="mb-2">
+                                        <i class="bi bi-play-circle text-primary fs-3"></i>
+                                        <div class="small text-success">Video uploaded</div>
+                                    </div>
+                                {% else %}
+                                    <div class="mb-2">
+                                        <i class="bi bi-camera-video text-secondary fs-3"></i>
+                                        <div class="small text-muted">No video</div>
+                                    </div>
+                                {% endif %}
+                                <input class="form-control form-control-sm mt-2" type="file" name="profile_video" accept="video/*">
+                                <small class="text-muted">Profile Video (Optional)</small>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Bio</label>
+                                    <textarea name="bio" class="form-control rounded-4" rows="3">{{ request.user.teacher_profile.bio|default:"" }}</textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Experience</label>
+                                    <textarea name="experience" class="form-control rounded-4" rows="2">{{ request.user.teacher_profile.experience|default:"" }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Highest Qualification</label>
+                                <input type="text" name="qualification" class="form-control rounded-pill" value="{{ request.user.teacher_profile.qualification|default:'' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Subjects Taught <small class="text-muted">(Comma separated)</small></label>
+                                <input type="text" name="subjects" class="form-control rounded-pill" value="{{ request.user.teacher_profile.subjects|default:'' }}">
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+                        <h5 class="fw-bold mb-3"><i class="bi bi-award"></i> Qualification Certificates</h5>
+                        
+                        <!-- Existing Certificates -->
+                        <div class="mb-4">
+                            {% if request.user.teacher_profile.certificates.all %}
+                                <ul class="list-group list-group-flush mb-3">
+                                {% for cert in request.user.teacher_profile.certificates.all %}
+                                    <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <div>
+                                            <i class="bi bi-file-earmark-text text-primary me-2"></i> {{ cert.title }}
+                                        </div>
+                                        <div>
+                                            {% if cert.is_approved %}
+                                                <span class="badge bg-success rounded-pill">Approved</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark rounded-pill">Pending Admin Approval</span>
+                                            {% endif %}
+                                            <a href="{{ cert.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill ms-2"><i class="bi bi-eye"></i> View</a>
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted small">No certificates uploaded yet.</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- Upload New Certificates -->
+                        <div class="mb-4" id="certificate-upload-container">
+                            <label class="form-label fw-bold">Upload New Certificates</label>
+                            <div class="d-flex gap-2 mb-2 cert-input-group">
+                                <input type="file" name="certificates" class="form-control rounded-pill" accept=".pdf,.jpg,.jpeg,.png">
+                                <button type="button" class="btn btn-success rounded-pill px-3" onclick="addCertInput()"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-4">
+                            <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold">Save Profile Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Remember active tab on reload
+        var triggerTabList = [].slice.call(document.querySelectorAll('#teacherTabs a[data-bs-toggle="list"]'));
+        triggerTabList.forEach(function (triggerEl) {
+            triggerEl.addEventListener('shown.bs.tab', function (event) {
+                localStorage.setItem('teacherTab', event.target.getAttribute('href'));
+            });
+        });
+        
+        var activeTab = localStorage.getItem('teacherTab');
+        if (activeTab) {
+            var tabToActivate = document.querySelector('#teacherTabs a[href="' + activeTab + '"]');
+            if(tabToActivate) {
+                var tab = new bootstrap.Tab(tabToActivate);
+                tab.show();
+            }
+        }
+    });
+
+    function addCertInput() {
+        const container = document.getElementById('certificate-upload-container');
+        const div = document.createElement('div');
+        div.className = 'd-flex gap-2 mb-2 cert-input-group';
+        div.innerHTML = `
+            <input type="file" name="certificates" class="form-control rounded-pill" accept=".pdf,.jpg,.jpeg,.png">
+            <button type="button" class="btn btn-danger rounded-pill px-3" onclick="this.parentElement.remove()"><i class="bi bi-trash"></i></button>
+        `;
+        container.appendChild(div);
+    }
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('.datatable').DataTable({
+            destroy: true,
+            order: [[1, 'asc']], // Order by Scheduled Date ascending
+            language: {
+                emptyTable: "No upcoming live sessions found."
+            },
+            drawCallback: function() {
+                $('.dataTables_filter input').addClass('form-control form-control-sm rounded-pill');
+                $('.dataTables_length select').addClass('form-select form-select-sm');
+            }
+        });
+        $('.datatable-ended').DataTable({
+            destroy: true,
+            order: [[1, 'desc']], // Order by Held On descending
+            language: {
+                emptyTable: "No ended live sessions found."
+            },
+            drawCallback: function() {
+                $('.dataTables_filter input').addClass('form-control form-control-sm rounded-pill');
+                $('.dataTables_length select').addClass('form-select form-select-sm');
+            }
+        });
+    });
+
+    function updateCountdowns() {
+        const containers = document.querySelectorAll('.join-container');
+        const now = new Date();
+        
+        containers.forEach(container => {
+            const startTimeStr = container.getAttribute('data-start-time');
+            const endTimeStr = container.getAttribute('data-end-time');
+            if(!startTimeStr) return;
+            
+            const startTime = new Date(startTimeStr);
+            const diffMs = startTime - now;
+            
+            const btn = container.querySelector('.join-btn');
+            const textSpan = container.querySelector('.countdown-text');
+            
+            if (endTimeStr && now > new Date(endTimeStr)) {
+                if (btn && !btn.hasAttribute('data-ended')) {
+                    container.innerHTML = `<button class="btn btn-secondary rounded-pill px-3 fw-bold disabled"><i class="bi bi-x-circle"></i> Class Ended</button>`;
+                    const newBtn = container.querySelector('button');
+                    if (newBtn) newBtn.setAttribute('data-ended', 'true');
+                }
+            } else if (diffMs <= 120000) { // 2 minutes or passed
+                if(btn && btn.classList.contains('disabled') && !btn.hasAttribute('data-ended')) {
+                    const joinUrl = container.getAttribute('data-join-url');
+                    container.innerHTML = `<a href="${joinUrl}" class="btn btn-success rounded-pill px-3 fw-bold"><i class="bi bi-play-fill"></i> Start/Join Session</a>`;
+                }
+            } else {
+                if(textSpan) {
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    const diffSecs = Math.floor((diffMs % (1000 * 60)) / 1000);
+                    
+                    let timeStr = "";
+                    if (diffDays > 0) timeStr += diffDays + "d ";
+                    if (diffHours > 0) timeStr += diffHours + "h ";
+                    timeStr += diffMins + "m " + diffSecs + "s";
+                    
+                    textSpan.textContent = "In: " + timeStr;
+                }
+            }
+        });
+    }
+    setInterval(updateCountdowns, 1000);
+    updateCountdowns();
+</script>
+{% endblock %}
