@@ -96,13 +96,14 @@ def get_student_context(user):
     except Exception:
         return "Student profile not found."
 
-    # â”€â”€ Bookings & Attendance â”€â”€
+    from courses.models import Project, ClassSummaryNote, RecordedClass, LiveClass, Course
+
+    # Bookings & Attendance
     bookings = Booking.objects.filter(student=profile).select_related('live_class__course__category', 'live_class__course__teacher__user').order_by('-booking_date')
     lines.append(f"\nTotal Bookings: {bookings.count()}")
-    lines.append("\n--- ATTENDANCE DETAILS ---")
+    lines.append("\n--- ATTENDANCE & LIVE CLASSES ---")
     
     courses = set()
-    total_attended = 0
     total_sessions = 0
     
     for b in bookings:
@@ -113,44 +114,42 @@ def get_student_context(user):
         tutor_name = b.live_class.course.teacher.user.username if getattr(b.live_class.course, 'teacher', None) else "Unknown Tutor"
         
         att = Attendance.objects.filter(student=profile, live_class=b.live_class).first()
-        if att:
-            status = att.status
-            duration = att.duration.total_seconds() / 60 if att.duration else 0
-            lines.append(f"â€¢ {date_str} | Subject: {subj} | Tutor: {tutor_name} | Status: {status} | Duration: {duration:.1f}m")
-            total_sessions += 1
-        else:
-            lines.append(f"â€¢ {date_str} | Subject: {subj} | Tutor: {tutor_name} | Attendance: Not recorded yet")
+        status = att.status if att else "Not recorded"
+        duration = att.duration.total_seconds() / 60 if att and att.duration else 0
+        
+        # Check for summaries
+        summary = ClassSummaryNote.objects.filter(live_class=b.live_class).first()
+        summary_txt = f"Summary: {summary.content[:100]}..." if summary else "No summary"
+        
+        lines.append(f"• {date_str} | Subject: {subj} | Tutor: {tutor_name} | Status: {status} | Duration: {duration:.1f}m | {summary_txt}")
+        if att: total_sessions += 1
 
     if total_sessions > 0:
         from core.utils import get_overall_attendance_percentage
-        overall_pct = get_overall_attendance_percentage(profile)
-        lines.append(f"\nOverall Average Attendance: {overall_pct}%")
-    else:
-        lines.append("\nOverall Average Attendance: No data yet")
+        lines.append(f"\nOverall Average Attendance: {get_overall_attendance_percentage(profile)}%")
 
-    # â”€â”€ Assignments â”€â”€
     if courses:
+        # Assignments
         assignments = Assignment.objects.filter(course__in=courses).order_by('-due_date')
         lines.append(f"\n--- ASSIGNMENTS ({assignments.count()} total) ---")
         for a in assignments:
-            sub_info = "Not submitted"
             sub = getattr(a, 'submissions', AssignmentSubmission.objects.none()).filter(student=profile).first()
-            if sub:
-                sub_info = f"Submitted ({sub.status})"
-                if getattr(sub, 'text_answer', None): sub_info += f" | Answer: {sub.text_answer}"
-            
-            tutor_name = a.course.teacher.user.username if getattr(a.course, 'teacher', None) else 'Unknown'
-            lines.append(
-                f"â€¢ '{a.title}' | Due: {a.due_date.strftime('%Y-%m-%d')} | Tutor: {tutor_name} | {sub_info}\n"
-                f"  Desc: {a.description or 'No desc'}"
-            )
+            sub_info = f"Submitted ({sub.status})" if sub else "Not submitted"
+            lines.append(f"• '{a.title}' | Due: {a.due_date.strftime('%Y-%m-%d')} | {sub_info}\n  Desc: {a.description or 'No desc'}")
 
-        # â”€â”€ Study Notes â”€â”€
+        # Projects
+        projects = Project.objects.filter(course__in=courses).order_by('-due_date')
+        lines.append(f"\n--- PROJECTS ({projects.count()} total) ---")
+        for p in projects:
+            sub = getattr(p, 'submissions', AssignmentSubmission.objects.none()).filter(student=profile).first()
+            sub_info = f"Submitted ({sub.status})" if sub else "Not submitted"
+            lines.append(f"• '{p.title}' | Due: {p.due_date.strftime('%Y-%m-%d')} | {sub_info}\n  Desc: {p.description or 'No desc'}")
+
+        # Study Notes
         notes = StudyNote.objects.filter(course__in=courses).order_by('-uploaded_at')
         lines.append(f"\n--- STUDY NOTES ({notes.count()} total) ---")
         for n in notes:
-            tutor_name = n.course.teacher.user.username if getattr(n.course, 'teacher', None) else 'Unknown'
-            lines.append(f"â€¢ '{n.title}' | Tutor: {tutor_name} | Date: {n.uploaded_at.strftime('%Y-%m-%d')}\n  Content: {read_study_note_content(n)}")
+            lines.append(f"• '{n.title}' | Date: {n.uploaded_at.strftime('%Y-%m-%d')}\n  Content: {read_study_note_content(n)}")
 
     return "\n".join(lines)
 
@@ -164,75 +163,48 @@ def get_tutor_context(user):
     except Exception:
         return "Tutor profile not found."
 
-    # â”€â”€ Courses and Subjects â”€â”€
-    from courses.models import Course, LiveClass, Assignment, CourseNote
+    from courses.models import Course, LiveClass, Assignment, CourseNote, Project, ClassSummaryNote
+    from django.utils import timezone
+    
     courses = Course.objects.filter(teacher=profile)
     lines.append(f"\n--- COURSES TAUGHT ({courses.count()}) ---")
     for c in courses:
-        lines.append(f"â€¢ {c.title} ({c.category.name if hasattr(c, 'category') and c.category else 'No Category'})")
+        lines.append(f"• {c.title} ({c.category.name if hasattr(c, 'category') and c.category else 'No Category'})")
 
-    # â”€â”€ Upcoming Live Classes â”€â”€
-    from django.utils import timezone
     now = timezone.now()
     upcoming_classes = LiveClass.objects.filter(course__teacher=profile, start_time__gte=now).order_by('start_time')
     lines.append(f"\n--- UPCOMING LIVE CLASSES ({upcoming_classes.count()}) ---")
     for lc in upcoming_classes:
-        lines.append(f"â€¢ {lc.topic} on {lc.start_time.strftime('%Y-%m-%d %H:%M') if lc.start_time else 'N/A'}")
+        lines.append(f"• {lc.topic} on {lc.start_time.strftime('%Y-%m-%d %H:%M') if lc.start_time else 'N/A'}")
 
-    # â”€â”€ Assignments Created â”€â”€
+    past_classes = LiveClass.objects.filter(course__teacher=profile, start_time__lt=now).order_by('-start_time')[:10]
+    lines.append(f"\n--- RECENT PAST CLASSES ({past_classes.count()}) ---")
+    for lc in past_classes:
+        summary = ClassSummaryNote.objects.filter(live_class=lc).first()
+        sum_txt = "Summary uploaded" if summary else "No summary"
+        lines.append(f"• {lc.topic} on {lc.start_time.strftime('%Y-%m-%d')} | {sum_txt}")
+
     assignments = Assignment.objects.filter(course__teacher=profile).order_by('-created_at')
     lines.append(f"\n--- ASSIGNMENTS CREATED ({assignments.count()}) ---")
     for a in assignments:
-        lines.append(f"â€¢ '{a.title}' | Due: {a.due_date.strftime('%Y-%m-%d %H:%M') if a.due_date else 'N/A'}")
-        subs = a.submissions.all()
-        lines.append(f"    - Submissions: {subs.count()}")
-        for s in subs:
-            lines.append(f"      - {s.student.user.username}: {s.status}")
+        lines.append(f"• '{a.title}' | Due: {a.due_date.strftime('%Y-%m-%d %H:%M') if a.due_date else 'N/A'} | Subs: {a.submissions.count()}")
 
-    # â”€â”€ Study Notes Uploaded â”€â”€
-    notes = CourseNote.objects.filter(course__teacher=profile).order_by('-uploaded_at')
-    lines.append(f"\n--- STUDY NOTES UPLOADED ({notes.count()}) ---")
-    for n in notes:
-        lines.append(f"â€¢ '{n.title}' | Course: {n.course.title if n.course else 'N/A'} | Uploaded: {n.uploaded_at.strftime('%Y-%m-%d') if n.uploaded_at else 'N/A'}")
+    projects = Project.objects.filter(course__teacher=profile).order_by('-created_at')
+    lines.append(f"\n--- PROJECTS CREATED ({projects.count()}) ---")
+    for p in projects:
+        lines.append(f"• '{p.title}' | Due: {p.due_date.strftime('%Y-%m-%d %H:%M') if p.due_date else 'N/A'} | Subs: {p.submissions.count()}")
 
-    # â”€â”€ Students and per-student attendance â”€â”€
     bookings = Booking.objects.filter(live_class__course__teacher=profile).select_related('student__user', 'live_class__course__category').order_by('student__user__username', '-booking_date')
     student_map = {}
     for b in bookings:
-        if not getattr(b, 'student', None) or not getattr(b, 'live_class', None): continue
-        sname = b.student.user.username
-        if sname not in student_map:
-            student_map[sname] = {'student': b.student, 'bookings': []}
-        student_map[sname]['bookings'].append(b)
+        if getattr(b, 'student', None):
+            sname = b.student.user.username
+            if sname not in student_map: student_map[sname] = []
+            student_map[sname].append(b)
 
     lines.append(f"\n--- ENROLLED STUDENTS ({len(student_map)}) ---")
-    for sname, info in student_map.items():
-        student = info['student']
-        sbookings = info['bookings']
-        total_attended = 0
-        total_sessions = 0
-        
-        lines.append(f"\nâ€¢ Student: {student.user.get_full_name() or sname} (@{sname})")
-        for b in sbookings:
-            subj = b.live_class.course.category.name if getattr(b.live_class.course, 'category', None) else "Unknown"
-            date_str = b.live_class.start_time.strftime('%Y-%m-%d') if getattr(b.live_class, 'start_time', None) else "No date"
-            
-            att = Attendance.objects.filter(student=student, live_class=b.live_class).first()
-            if att:
-                lines.append(f"    - {date_str} ({subj}) | Status: {att.status}")
-                total_sessions += 1
-            else:
-                lines.append(f"    - {date_str} ({subj}) | Attendance: Not recorded")
-
-        if total_sessions > 0:
-            from core.utils import get_overall_attendance_percentage
-            try:
-                avg_att = get_overall_attendance_percentage(student)
-                lines.append(f"  Total Sessions: {len(sbookings)} | Avg Attendance: {avg_att}%")
-            except:
-                lines.append(f"  Total Sessions: {len(sbookings)} | Avg Attendance: No data")
-        else:
-            lines.append(f"  Total Sessions: {len(sbookings)} | Avg Attendance: No data")
+    for sname, sbookings in student_map.items():
+        lines.append(f"• Student: {sname} ({len(sbookings)} sessions)")
 
     return "\n".join(lines)
 
@@ -250,58 +222,41 @@ def get_parent_context(user):
         for child in children:
             lines.append(f"\n>>> CHILD: {child.user.get_full_name() or child.user.username}")
             child_context = get_student_context(child.user)
-            # Indent child context for readability
             for line in child_context.split('\n'):
                 lines.append(f"    {line}")
-
     except ParentProfile.DoesNotExist:
-        lines.append("No parent profile found. Please link your children in settings.")
-
+        lines.append("No parent profile found.")
     return "\n".join(lines)
 
-# â”€â”€â”€ Main system prompt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def generate_system_prompt(user):
     base = (
-        "You are TuitionBot, a smart AI assistant embedded in the Tuition4All tutoring platform. "
-        "You have real-time access to the user's data. Be specific, accurate, helpful, and concise. "
-        "When quoting numbers (attendance %, dates, etc.) use exactly what is in the context provided. "
-        "If data is not in the context, say so clearly - do NOT make up information.\\n"
-        "IMPORTANT FORMATTING RULES:\\n"
-        "1. ALWAYS use bold markdown (**bold**) for highlighting key terms, names, dates, and important concepts.\\n"
-        "2. Do NOT hallucinate or provide overly long responses.\\n"
-        "3. Use simple bullet points for lists.\\n\\n"
+        "You are TuitionBot, an advanced AI educational assistant, similar in capability to Gemini or ChatGPT. "
+        "You have strict access ONLY to the user's secure context provided below. "
+        "You MUST behave as a professional personal assistant, adapting to instructions but remaining strictly professional. "
+        "Focus entirely on work, tasks, platform features, and educational content. Do not become overly personal or emotional.\n\n"
+        "🔥 **CRITICAL FORMATTING RULES** 🔥:\n"
+        "1. You MUST use rich Markdown extensively. Use **bold** for emphasis, names, dates, and key concepts.\n"
+        "2. You MUST use *italics* for nuanced points and blockquotes (`>`) for summaries.\n"
+        "3. You MUST use a very minimal amount of EMOJIS. Use a maximum of 1 or 2 emojis per response. Do not use emojis in every sentence.\n"
+        "4. You MUST use structured bullet points for any lists.\n"
+        "5. You MUST preserve Data Privacy: you only know about the data provided in the context below.\n\n"
     )
 
     if user.role == 'student':
         role_context = get_student_context(user)
-        instructions = (
-            "You are talking to a STUDENT. Help them with: their attendance per session, "
-            "assignment deadlines and status, study notes from tutors, enrolled subjects and tutors. "
-            "Also answer general academic questions, explain meanings of concepts, and check grammar."
-        )
+        instructions = "You are assisting a STUDENT. Summarize their class notes, check assignments/projects, explain concepts, and act as a professional, personalized tutor."
     elif user.role == 'teacher':
         role_context = get_tutor_context(user)
-        instructions = (
-            "You are talking to a TUTOR. Help them with: student attendance reports, "
-            "which students submitted assignments, parent-student links, session history, "
-            "study notes they uploaded, and subject/rate comparisons with other tutors on the platform. "
-            "You can also help them draft professional messages to parents or students."
-        )
+        instructions = "You are assisting a TUTOR. Help them analyze student attendance, track assignment and project submissions, and draft professional emails or lesson plans."
     elif user.role == 'parent':
         role_context = get_parent_context(user)
-        instructions = (
-            "You are talking to a PARENT. Help them with: their child's attendance and progress, "
-            "upcoming and missed assignments, tutor performance (rating, experience), "
-            "and any concerns about their child's learning. You can also help draft professional messages."
-        )
+        instructions = "You are assisting a PARENT. Help them track their child's attendance, due dates, projects, and learning progress."
     else:
         role_context = get_tutors_summary()
-        instructions = "You are talking to an admin or general user. Help them draft professional messages, check grammar, or understand platform data."
+        instructions = "You are assisting a user. Help them explore the platform."
 
-    tutor_summary = get_tutors_summary()
-
-    return f"{base}INSTRUCTIONS: {instructions}\n\nYou are a highly capable AI. In addition to answering data-specific questions, you can check grammar, explain meanings, and generate professional messages.\n\n{role_context}\n\n{tutor_summary}\n\nAnswer based strictly on the above data when asked about platform details."
+    return f"{base}INSTRUCTIONS: {instructions}\n\n{role_context}\n\nRemember: Format beautifully with Markdown, maintain a professional tone, and use a maximum of 1-2 emojis per response!"
 
 
 # â”€â”€â”€ Chat & Transcription â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -320,20 +275,86 @@ def chat_with_ai(session, user, message_content):
         past_messages.pop(0)
 
     messages = [{"role": "system", "content": generate_system_prompt(user)}]
+
+    # --- PERSISTENT CROSS-SESSION MEMORY ---
+    # Fetch the last 20 messages from OTHER sessions to let the AI remember the user's name, mood, and trained behavior.
+    global_memory_msgs = list(AIChatMessage.objects.filter(session__user=user).exclude(session=session).order_by('-created_at')[:20])
+    if global_memory_msgs:
+        global_memory_msgs.reverse()
+        memory_str = "\n".join([f"{'USER' if m.role == 'user' else 'AI'}: {m.content}" for m in global_memory_msgs])
+        memory_instruction = (
+            "\n\n=== 🧠 PERSISTENT USER MEMORY (Past Conversations) ===\n"
+            "Below is a short transcript of your PAST conversations with this exact user in other chat sessions. "
+            "CRITICAL INSTRUCTION: You MUST use this memory to remember their name (if they told you), their preferences, their current mood, "
+            "and any specific instructions they gave you on how to behave! Adapt your persona to match how they trained you.\n\n"
+            f"{memory_str}\n=======================================================\n"
+        )
+        messages[0]["content"] += memory_instruction
+    # ---------------------------------------
+
     for msg in past_messages:
         messages.append({"role": msg.role, "content": msg.content})
 
-    # Call Groq API
-    response = client.chat.completions.create(
-        model="groq/compound-mini",
-        messages=messages,
-        temperature=0.6,
-        max_tokens=1500,
-    )
+    import os
+    import time
+    from groq import Groq
 
-    ai_content = response.choices[0].message.content
+    # Parse multiple API keys if provided via comma-separated string in settings
+    api_keys_str = getattr(settings, 'GROQ_API_KEY', '') or os.environ.get('GROQ_API_KEY', '')
+    api_keys = [k.strip() for k in api_keys_str.split(',') if k.strip()]
+    if not api_keys:
+        raise Exception("No Groq API keys found in configuration.")
 
-    # Save AI response
+    # List of stable fallback models
+    MODELS = [
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
+        "groq/compound",
+        "groq/compound-mini",
+        "qwen/qwen3.8-27b"
+    ]
+
+    response = None
+    last_error = None
+
+    # Try each API key
+    for api_key in api_keys:
+        current_client = Groq(api_key=api_key)
+        
+        # Try each model for this API key
+        for model_name in MODELS:
+            try:
+                response = current_client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    temperature=0.6,
+                    max_tokens=1500,
+                )
+                break # Success! Break out of model loop
+            except Exception as e:
+                last_error = e
+                print(f"Failed with key {api_key[:6]}... and model {model_name}: {str(e)}")
+                continue # Try next model
+        
+        if response:
+            break # Success! Break out of API key loop
+
+    if not response:
+        error_str = str(last_error)
+        ai_content = "⚠️ **AI Service Unavailable**\n\nI apologize, but all AI models are currently offline or we have reached our maximum usage limit."
+        
+        # Check if it's a rate limit error and try to extract the retry time
+        import re
+        match = re.search(r"try again in ([\d\w\.]+)", error_str, re.IGNORECASE)
+        if "429" in error_str or "rate_limit" in error_str.lower():
+            ai_content = "⚠️ **Usage Limit Reached**\n\nWe have reached the maximum API usage limit for the AI assistant."
+            if match:
+                ai_content += f" Please try again in **{match.group(1)}**."
+                
+    else:
+        ai_content = response.choices[0].message.content
+
+    # Save AI response (or the graceful error message)
     ai_msg = AIChatMessage.objects.create(
         session=session,
         role=AIChatMessage.Role.ASSISTANT,
@@ -341,10 +362,10 @@ def chat_with_ai(session, user, message_content):
     )
 
     # Auto-generate session title from first user message
-    if session.title == "New Chat" and len(past_messages) <= 2:
+    if session.title == "New Chat" and len(past_messages) <= 2 and response:
         try:
-            title_resp = client.chat.completions.create(
-                model="groq/compound-mini",
+            title_resp = current_client.chat.completions.create(
+                model=MODELS[0],
                 messages=[
                     {"role": "system", "content": "Generate a short (3-5 words) title for this conversation. Only return the title text, no quotes, no punctuation."},
                     {"role": "user", "content": message_content}

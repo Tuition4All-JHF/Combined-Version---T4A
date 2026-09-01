@@ -690,7 +690,7 @@
                 <div class="row mb-4">
                     {% for assignment in assignments %}
                     <div class="col-md-6 mb-3">
-                        <div class="card shadow-sm border-0 rounded-4 h-100 border-start border-4 border-primary">
+                        <div class="card shadow-sm border-0 rounded-4 h-100 border-start border-4 border-primary item-card" onclick="openItemDetailsModal('assignment-{{ assignment.id }}')" style="cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                             <div class="card-body p-4 d-flex flex-column">
                                 <h5 class="fw-bold text-dark">{{ assignment.title }}</h5>
                                 <p class="text-muted small mb-2">Course: {{ assignment.course.title }}</p>
@@ -706,9 +706,23 @@
                                 </div>
                                 <p class="mb-3 flex-grow-1">{{ assignment.description|truncatewords:15 }}</p>
                                 
+                                <div class="text-center mt-auto">
+                                    <span class="btn btn-sm btn-outline-primary rounded-pill w-100 fw-bold">Click to View Details</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Data for Modal -->
+                        <div id="data-assignment-{{ assignment.id }}" class="d-none">
+                            <div class="item-title">{{ assignment.title }}</div>
+                            <div class="item-course">{{ assignment.course.title }}</div>
+                            <div class="item-due">{{ assignment.due_date|date:"M d, Y h:i A" }}</div>
+                            <div class="item-desc">{{ assignment.description|linebreaksbr }}</div>
+                            <div class="item-file">{% if assignment.file %}{{ assignment.file.url }}{% endif %}</div>
+                            <div class="item-action">
                                 {% with sub=assignment_subs|get_item:assignment.id %}
                                     {% if sub %}
-                                        <div class="alert alert-{% if sub.status == 'accepted' %}success{% elif sub.status == 'rejected' %}danger{% elif sub.status == 'resubmit' %}warning{% else %}info{% endif %} py-2 px-3 mb-0 rounded-3">
+                                        <div class="alert alert-{% if sub.status == 'accepted' %}success{% elif sub.status == 'rejected' %}danger{% elif sub.status == 'resubmit' %}warning{% else %}info{% endif %} py-2 px-3 mb-3 rounded-3 text-start">
                                             <strong>Status:</strong> {{ sub.get_status_display }}
                                             {% if sub.teacher_comments %}
                                             <hr class="my-2">
@@ -716,10 +730,13 @@
                                             {% endif %}
                                         </div>
                                         {% if sub.status == 'resubmit' or sub.status == 'rejected' %}
-                                            <button class="btn btn-outline-primary btn-sm rounded-pill mt-3 w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="assignment" data-id="{{ assignment.id }}" data-title="{{ assignment.title }}">Re-Submit Work</button>
+                                            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="assignment" data-id="{{ assignment.id }}" data-title="{{ assignment.title }}" onclick="closeItemDetailsModal()">Re-Submit Work</button>
                                         {% endif %}
                                     {% else %}
-                                        <button class="btn btn-primary btn-sm rounded-pill mt-auto w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="assignment" data-id="{{ assignment.id }}" data-title="{{ assignment.title }}">
+                                        <div class="alert alert-secondary py-2 px-3 mb-3 rounded-3 text-start">
+                                            <strong>Status:</strong> Not Submitted
+                                        </div>
+                                        <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="assignment" data-id="{{ assignment.id }}" data-title="{{ assignment.title }}" onclick="closeItemDetailsModal()">
                                             <i class="bi bi-cloud-upload"></i> Upload Work
                                         </button>
                                     {% endif %}
@@ -739,7 +756,7 @@
                 <div class="row">
                     {% for project in projects %}
                     <div class="col-md-6 mb-3">
-                        <div class="card shadow-sm border-0 rounded-4 h-100 border-start border-4 border-success">
+                        <div class="card shadow-sm border-0 rounded-4 h-100 border-start border-4 border-success item-card" onclick="openItemDetailsModal('project-{{ project.id }}')" style="cursor: pointer; transition: transform 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                             <div class="card-body p-4 d-flex flex-column">
                                 <h5 class="fw-bold text-dark">{{ project.title }}</h5>
                                 <p class="text-muted small mb-2">Course: {{ project.course.title }}</p>
@@ -755,9 +772,23 @@
                                 </div>
                                 <p class="mb-3 flex-grow-1">{{ project.description|truncatewords:15 }}</p>
                                 
+                                <div class="text-center mt-auto">
+                                    <span class="btn btn-sm btn-outline-success rounded-pill w-100 fw-bold">Click to View Details</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Data for Modal -->
+                        <div id="data-project-{{ project.id }}" class="d-none">
+                            <div class="item-title">{{ project.title }}</div>
+                            <div class="item-course">{{ project.course.title }}</div>
+                            <div class="item-due">{{ project.due_date|date:"M d, Y h:i A" }}</div>
+                            <div class="item-desc">{{ project.description|linebreaksbr }}</div>
+                            <div class="item-file">{% if project.file %}{{ project.file.url }}{% endif %}</div>
+                            <div class="item-action">
                                 {% with sub=project_subs|get_item:project.id %}
                                     {% if sub %}
-                                        <div class="alert alert-{% if sub.status == 'accepted' %}success{% elif sub.status == 'rejected' %}danger{% elif sub.status == 'resubmit' %}warning{% else %}info{% endif %} py-2 px-3 mb-0 rounded-3">
+                                        <div class="alert alert-{% if sub.status == 'accepted' %}success{% elif sub.status == 'rejected' %}danger{% elif sub.status == 'resubmit' %}warning{% else %}info{% endif %} py-2 px-3 mb-3 rounded-3 text-start">
                                             <strong>Status:</strong> {{ sub.get_status_display }}
                                             {% if sub.teacher_comments %}
                                             <hr class="my-2">
@@ -765,10 +796,13 @@
                                             {% endif %}
                                         </div>
                                         {% if sub.status == 'resubmit' or sub.status == 'rejected' %}
-                                            <button class="btn btn-outline-success btn-sm rounded-pill mt-3 w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="project" data-id="{{ project.id }}" data-title="{{ project.title }}">Re-Submit Project</button>
+                                            <button class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="project" data-id="{{ project.id }}" data-title="{{ project.title }}" onclick="closeItemDetailsModal()">Re-Submit Project</button>
                                         {% endif %}
                                     {% else %}
-                                        <button class="btn btn-success btn-sm rounded-pill mt-auto w-100" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="project" data-id="{{ project.id }}" data-title="{{ project.title }}">
+                                        <div class="alert alert-secondary py-2 px-3 mb-3 rounded-3 text-start">
+                                            <strong>Status:</strong> Not Submitted
+                                        </div>
+                                        <button class="btn btn-success rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#uploadModal" data-type="project" data-id="{{ project.id }}" data-title="{{ project.title }}" onclick="closeItemDetailsModal()">
                                             <i class="bi bi-cloud-upload"></i> Upload Project
                                         </button>
                                     {% endif %}
@@ -870,6 +904,71 @@
         </div>
     </div>
 </div>
+
+<!-- Item Details Modal -->
+<div class="modal fade" id="itemDetailsModal" tabindex="-1" aria-labelledby="itemDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary" id="itemDetailsTitle">Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 pt-3">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <span class="text-muted" id="itemDetailsCourse"><i class="bi bi-book"></i> Course</span>
+                    <span class="text-danger fw-bold" id="itemDetailsDue"><i class="bi bi-clock-history"></i> Due: </span>
+                </div>
+                <div class="mb-4">
+                    <h6 class="fw-bold">Description</h6>
+                    <p id="itemDetailsDescription" style="white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6;"></p>
+                </div>
+                <div id="itemDetailsFileContainer" class="mb-4 d-none">
+                    <h6 class="fw-bold">Attached File by Tutor</h6>
+                    <a href="#" id="itemDetailsFileLink" target="_blank" class="btn btn-outline-primary btn-sm rounded-pill px-4"><i class="bi bi-file-earmark-arrow-down me-2"></i> View / Download File</a>
+                </div>
+                <div id="itemDetailsActionContainer" class="mt-4 border-top pt-3 text-end">
+                    <!-- Javascript will inject the upload/resubmit status and button here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let itemDetailsModalInstance = null;
+    
+    function openItemDetailsModal(idPrefix) {
+        const container = document.getElementById('data-' + idPrefix);
+        if (!container) return;
+        
+        document.getElementById('itemDetailsTitle').textContent = container.querySelector('.item-title').innerHTML;
+        document.getElementById('itemDetailsCourse').innerHTML = `<i class="bi bi-book me-1"></i> ${container.querySelector('.item-course').innerHTML}`;
+        document.getElementById('itemDetailsDue').innerHTML = `<i class="bi bi-clock-history me-1"></i> Due: ${container.querySelector('.item-due').innerHTML}`;
+        document.getElementById('itemDetailsDescription').innerHTML = container.querySelector('.item-desc').innerHTML;
+        
+        const fileContainer = document.getElementById('itemDetailsFileContainer');
+        const fileLink = document.getElementById('itemDetailsFileLink');
+        const fileUrl = container.querySelector('.item-file').innerHTML.trim();
+        
+        if (fileUrl) {
+            fileLink.href = fileUrl;
+            fileContainer.classList.remove('d-none');
+        } else {
+            fileContainer.classList.add('d-none');
+        }
+        
+        document.getElementById('itemDetailsActionContainer').innerHTML = container.querySelector('.item-action').innerHTML;
+        
+        itemDetailsModalInstance = new bootstrap.Modal(document.getElementById('itemDetailsModal'));
+        itemDetailsModalInstance.show();
+    }
+    
+    function closeItemDetailsModal() {
+        if (itemDetailsModalInstance) {
+            itemDetailsModalInstance.hide();
+        }
+    }
+</script>
 
 <script>
     const uploadModal = document.getElementById('uploadModal');

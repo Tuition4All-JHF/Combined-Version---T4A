@@ -187,28 +187,13 @@ def ai_chat_response(request):
                 title = prompt[:50] + "..." if len(prompt) > 50 else prompt
                 session = AIChatSession.objects.create(user=request.user, title=title)
                 
-            # Save user message
-            AIChatMessage.objects.create(
-                session=session,
-                role=AIChatMessage.Role.USER,
-                content=prompt
-            )
-            
-            # Call AI
+            from tutorsapp.ai_service import chat_with_ai
             try:
-                response_text = call_groq_api(prompt, system_prompt="You are an expert AI educational assistant. Provide helpful and accurate answers.")
-            except Exception:
-                try:
-                    response_text = call_gemini_api(prompt)
-                except Exception as e:
-                    response_text = "Sorry, I am unable to process your request right now."
-                
-            # Save AI response
-            AIChatMessage.objects.create(
-                session=session,
-                role=AIChatMessage.Role.ASSISTANT,
-                content=response_text
-            )
+                ai_msg = chat_with_ai(session, request.user, prompt)
+                response_text = ai_msg.content
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                response_text = "Sorry, I am unable to process your request right now. Error: " + str(e)
             
             return JsonResponse({
                 'status': 'success',

@@ -218,15 +218,13 @@
                 <div class="chat-container d-flex flex-column mb-3" id="chat-box">
                     {% if active_session %}
                         {% for msg in chat_messages %}
-                            <div class="bubble {% if msg.role == 'user' %}bubble-user{% else %}bubble-ai{% endif %}">
-                                {{ msg.content|linebreaksbr }}
+                            <div class="bubble {% if msg.role == 'user' %}bubble-user{% else %}bubble-ai ai-message-bubble{% endif %}" {% if msg.role != 'user' %}data-raw-content="{{ msg.content|escape }}"{% endif %}>
+                                {% if msg.role == 'user' %}{{ msg.content|linebreaksbr }}{% endif %}
                             </div>
                         {% endfor %}
                     {% else %}
                         <!-- Welcome message -->
-                        <div class="bubble bubble-ai d-flex flex-column gap-2">
-                            <span>👋 Hello <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>! I am your personal Tution4All AI assistant.</span>
-                            <span>I have secure, real-time access to your profile, enrolled courses, schedules, assignments, and class summaries. How can I help you learn today?</span>
+                        <div class="bubble bubble-ai d-flex flex-column gap-2 ai-message-bubble" data-raw-content="👋 Hello **{{ request.user.get_full_name|default:request.user.username }}**! I am your personal Tution4All AI assistant.&#10;I have secure, real-time access to your profile, enrolled courses, schedules, assignments, and class summaries. How can I help you learn today?">
                         </div>
                     {% endif %}
                 </div>
@@ -257,28 +255,92 @@
                 </div>
 
                 <!-- Input area -->
-                <form id="ai-chat-form" class="d-flex gap-2 mt-auto align-items-center">
-                    <button type="button" id="btn-voice-input" class="btn btn-outline-secondary rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 52px; height: 52px; flex-shrink: 0;" title="Speak to AI">
-                        <i class="bi bi-mic-fill fs-5"></i>
-                    </button>
-                    <input type="text" id="ai-chat-input" class="form-control rounded-pill border shadow-sm px-4 py-3" placeholder="Ask your personal AI database assistant anything..." required style="font-size: 0.95rem;">
-                    <button type="submit" class="btn btn-primary rounded-circle p-0 d-flex justify-content-center align-items-center shadow-lg" style="width: 52px; height: 52px; flex-shrink: 0;">
-                        <i class="bi bi-send-fill fs-5"></i>
-                    </button>
-                </form>
+                <div class="position-relative">
+                    <div id="emoji-picker-container" class="position-absolute d-none shadow rounded p-2" style="bottom: 70px; right: 20px; z-index: 9999; background: white; border: 1px solid #ddd; width: 230px;">
+                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">😀</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">😂</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">😍</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">🥰</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">😎</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">🤔</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">😢</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">😡</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">👍</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">👎</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">🙏</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">❤️</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">🔥</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">✨</span>
+                            <span class="emoji-btn fs-4" style="cursor: pointer; user-select: none;">💯</span>
+                        </div>
+                    </div>
+                    <form id="ai-chat-form" class="d-flex gap-2 mt-auto align-items-center">
+                        <button type="button" id="btn-voice-input" class="btn btn-outline-secondary rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 52px; height: 52px; flex-shrink: 0;" title="Speak to AI">
+                            <i class="bi bi-mic-fill fs-5"></i>
+                        </button>
+                        <div class="position-relative w-100">
+                            <input type="text" id="ai-chat-input" class="form-control rounded-pill border shadow-sm px-4 py-3 w-100" placeholder="Ask your personal AI database assistant anything..." required style="font-size: 0.95rem; padding-right: 50px !important;">
+                            <button type="button" id="btn-emoji-toggle" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted" style="text-decoration: none; border: none; background: transparent;">
+                                <i class="bi bi-emoji-smile fs-5"></i>
+                            </button>
+                        </div>
+                        <button type="submit" class="btn btn-primary rounded-circle p-0 d-flex justify-content-center align-items-center shadow-lg" style="width: 52px; height: 52px; flex-shrink: 0;">
+                            <i class="bi bi-send-fill fs-5"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
+    // Configure marked to use GitHub Flavored Markdown and line breaks
+    marked.setOptions({
+        breaks: true,
+        gfm: true
+    });
+
     const chatBox = document.getElementById('chat-box');
     const chatForm = document.getElementById('ai-chat-form');
     const chatInput = document.getElementById('ai-chat-input');
     
+    // Emoji Picker Logic
+    const emojiToggle = document.getElementById('btn-emoji-toggle');
+    const emojiContainer = document.getElementById('emoji-picker-container');
+
+    emojiToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        emojiContainer.classList.toggle('d-none');
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!emojiContainer.contains(e.target) && e.target !== emojiToggle && !emojiToggle.contains(e.target)) {
+            emojiContainer.classList.add('d-none');
+        }
+    });
+
+    document.querySelectorAll('.emoji-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            chatInput.value += e.target.innerText;
+            chatInput.focus();
+        });
+    });
+
     // Store current active session ID
     let currentSessionId = {% if active_session %}{{ active_session.id }}{% else %}null{% endif %};
     
+    // Parse any existing AI messages on page load
+    document.querySelectorAll('.ai-message-bubble').forEach(bubble => {
+        const raw = bubble.getAttribute('data-raw-content');
+        if (raw) {
+            bubble.innerHTML = marked.parse(raw);
+        }
+    });
+
     // Auto-scroll to bottom of chat
     chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -286,14 +348,16 @@
         const bubble = document.createElement('div');
         bubble.className = `bubble ${role === 'user' ? 'bubble-user' : 'bubble-ai'}`;
         
-        let formattedText = text
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/`(.*?)`/g, '<code class="bg-dark text-white px-2 py-0.5 rounded">$1</code>')
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="text-decoration-underline fw-bold">$1</a>')
-            .replace(/\n/g, '<br>');
+        let formattedText;
+        if (role === 'ai') {
+            formattedText = marked.parse(text);
+        } else {
+            formattedText = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\n/g, '<br>');
+        }
             
         bubble.innerHTML = formattedText;
         chatBox.appendChild(bubble);
@@ -358,7 +422,6 @@
             removeTypingIndicator();
             appendMessage('ai', 'Error connecting to the server. Please try again.');
         }
-    }
     }
 
     chatForm.addEventListener('submit', (e) => {
