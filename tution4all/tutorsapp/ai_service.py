@@ -241,6 +241,10 @@ def generate_system_prompt(user):
         "3. You MUST use a very minimal amount of EMOJIS. Use a maximum of 1 or 2 emojis per response. Do not use emojis in every sentence.\n"
         "4. You MUST use structured bullet points for any lists.\n"
         "5. You MUST preserve Data Privacy: you only know about the data provided in the context below.\n\n"
+        "🔥 **CRITICAL DOCUMENT ANALYSIS RULE** 🔥:\n"
+        "You ALREADY have access to the user's uploaded documents, assignments, and study notes in the context below. "
+        "DO NOT EVER claim you cannot view, read, or download attached files. When a user asks you to analyze, summarize, or review a document, "
+        "look for its content in the context below and provide the requested analysis based solely on that text.\n\n"
     )
 
     if user.role == 'student':

@@ -15,6 +15,7 @@ import {
   PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Markdown from 'react-native-markdown-display';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import {
@@ -183,9 +184,28 @@ export default function AIChatScreen({ navigation }: any) {
 
   const renderMessage = ({ item }: { item: any }) => {
     const isUser = item.role === 'user';
+    
+    // Simple HTML strip since old messages might have HTML tags
+    const cleanContent = isUser ? item.content : item.content.replace(/<b>(.*?)<\/b>/g, '**$1**').replace(/<i>(.*?)<\/i>/g, '*$1*').replace(/<[^>]*>?/gm, '');
+
     return (
-      <View style={[styles.messageBubble, isUser ? { backgroundColor: colors.primary, alignSelf: 'flex-end' } : { backgroundColor: colors.surface, alignSelf: 'flex-start' }]}>
-        <Text style={[styles.messageText, isUser ? { color: '#fff' } : { color: colors.text }]}>{item.content}</Text>
+      <View style={[styles.messageBubble, isUser ? { backgroundColor: colors.primary, alignSelf: 'flex-end' } : { backgroundColor: colors.surface, alignSelf: 'flex-start', minWidth: '60%' }]}>
+        {isUser ? (
+          <Text style={[styles.messageText, { color: '#fff' }]}>{item.content}</Text>
+        ) : (
+          <Markdown style={{
+            body: { color: colors.text, fontSize: 16, lineHeight: 24, margin: 0 },
+            paragraph: { marginTop: 0, marginBottom: 8 },
+            strong: { fontWeight: '700', color: colors.text },
+            em: { fontStyle: 'italic', color: colors.text },
+            code_inline: { backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 4, padding: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+            code_block: { backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 8, padding: 8, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 },
+            blockquote: { borderLeftWidth: 4, borderLeftColor: colors.primary, paddingLeft: 10, fontStyle: 'italic', marginVertical: 8, marginLeft: 0 },
+            list_item: { marginBottom: 4 }
+          }}>
+            {cleanContent}
+          </Markdown>
+        )}
       </View>
     );
   };
