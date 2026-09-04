@@ -754,11 +754,31 @@ class MessageListCreate(APIView):
             room = ChatRoom.objects.get(id=room_id)
             if request.user not in [room.student, room.tutor, room.parent]:
                 return Response({'detail': 'Access denied.'}, status=403)
+                
             content = request.data.get('content', '').strip()
-            if not content:
-                return Response({'detail': 'Message cannot be empty.'}, status=400)
-            msg = Message.objects.create(room=room, sender=request.user, content=content)
-            return Response(MessageSerializer(msg).data, status=201)
+            attachment = request.FILES.get('attachment')
+            attachment_type = request.data.get('attachment_type')
+            reply_to_id = request.data.get('reply_to')
+            
+            if not content and not attachment:
+                return Response({'detail': 'Message cannot be empty without an attachment.'}, status=400)
+                
+            msg = Message(room=room, sender=request.user, content=content)
+            
+            if attachment:
+                msg.attachment = attachment
+                msg.attachment_type = attachment_type
+                
+            if reply_to_id:
+                try:
+                    reply_msg = Message.objects.get(id=reply_to_id, room=room)
+                    msg.reply_to = reply_msg
+                except Message.DoesNotExist:
+                    pass
+                    
+            msg.save()
+            
+            return Response(MessageSerializer(msg, context={'request': request}).data, status=201)
         except ChatRoom.DoesNotExist:
             return Response({'detail': 'Room not found.'}, status=404)
 

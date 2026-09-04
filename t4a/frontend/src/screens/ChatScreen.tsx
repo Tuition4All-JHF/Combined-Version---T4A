@@ -2,23 +2,30 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Image, StatusBar,
+  ActivityIndicator, Image, StatusBar, Modal, Dimensions
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { typography } from '../theme/typography';
-import { radius, spacing } from '../theme/spacing';
 import apiClient from '../api/client';
 import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
 
 const ChatScreen = ({ route, navigation }: any) => {
   const { room, otherName } = route.params;
   const { colors } = useTheme();
   const { user } = useSelector((state: RootState) => state.auth);
+  
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
-  const [inputFocused, setInputFocused] = useState(false);
+  
+  // State for Context Menu & Replies
+  const [replyTo, setReplyTo] = useState<any | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
+
   const flatListRef = useRef<FlatList>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -39,24 +46,103 @@ const ChatScreen = ({ route, navigation }: any) => {
     };
   }, []);
 
+  const sendAttachment = async (uri: string, type: string) => {
+    const formData = new FormData();
+    if (text.trim()) formData.append('content', text.trim());
+    if (replyTo) formData.append('reply_to', replyTo.id);
+    
+    formData.append('attachment', {
+      uri,
+      name: 'photo.jpg',
+      type: 'image/jpeg'
+    } as any);
+    formData.append('attachment_type', type);
+    
+    setText('');
+    setReplyTo(null);
+
+    try {
+      await apiClient.post(`chat/rooms/${room.id}/messages/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      fetchMessages();
+    } catch (e) {
+      console.log('Upload error', e);
+    }
+  };
+
   const sendMessage = () => {
     const content = text.trim();
     if (!content) return;
+    
+    const formData = new FormData();
+    formData.append('content', content);
+    if (replyTo) formData.append('reply_to', replyTo.id);
+    
     setText('');
-    const tempMsg = {
-      id: Date.now(),
-      sender_name: user?.username,
-      content,
-      created_at: new Date().toISOString(),
-    };
-    setMessages(prev => [...prev, tempMsg]);
-    apiClient.post(`chat/rooms/${room.id}/messages/`, { content })
-      .then(fetchMessages)
-      .catch(() => {});
+    setReplyTo(null);
+
+    apiClient.post(`chat/rooms/${room.id}/messages/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(fetchMessages).catch(() => {});
+  };
+
+  // Image Picker
+  const pickImage = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      sendAttachment(result.assets[0].uri, 'image');
+    }
+  };
+
+  const handleReply = () => {
+    setReplyTo(selectedMessage);
+    setSelectedMessage(null);
   };
 
   const isMe = (msg: any) => msg.sender_name === user?.username;
   const otherInitial = otherName?.[0]?.toUpperCase() || '?';
+
+  const renderMessage = ({ item }: { item: any }) => {
+    const me = isMe(item);
+    const timeStr = new Date(item.created_at).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit',
+    });
+    
+    return (
+      <TouchableOpacity 
+        activeOpacity={0.9}
+        onLongPress={() => setSelectedMessage(item)}
+        style={[s.bubbleRow, me ? s.bubbleRowMe : s.bubbleRowThem]}
+      >
+        <View style={[s.bubble, me ? s.bubbleMe : s.bubbleThem]}>
+          {item.reply_to_content && (
+            <View style={[s.replyBoxInline, me ? s.replyBoxInlineMe : s.replyBoxInlineThem]}>
+              <Text style={[s.replySenderInline, me ? s.replySenderInlineMe : s.replySenderInlineThem]}>{item.reply_to_sender}</Text>
+              <Text style={[s.replyTextInline, me ? s.replyTextInlineMe : s.replyTextInlineThem]} numberOfLines={1}>{item.reply_to_content || 'Attachment'}</Text>
+            </View>
+          )}
+          
+          {item.attachment_type === 'image' && item.attachment_url && (
+            <Image source={{ uri: item.attachment_url }} style={s.chatImage} />
+          )}
+
+          {!!item.content && (
+            <Text selectable={true} style={[s.bubbleText, me ? s.bubbleTextMe : s.bubbleTextThem]}>
+              {item.content}
+            </Text>
+          )}
+          
+          <Text style={[s.bubbleTime, me ? s.bubbleTimeMe : s.bubbleTimeThem]}>
+            {timeStr}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const s = createStyles(colors);
 
@@ -65,12 +151,12 @@ const ChatScreen = ({ route, navigation }: any) => {
       style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.surfaceElevated} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
-      {/* Header */}
+      {/* Header (T4A iMessage Style) */}
       <View style={s.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-          <Text style={s.backText}>←</Text>
+          <Ionicons name="chevron-back" size={28} color={colors.primary} />
         </TouchableOpacity>
         <View style={s.headerCenter}>
           <View style={s.headerAvatar}>
@@ -82,82 +168,96 @@ const ChatScreen = ({ route, navigation }: any) => {
           </View>
           <View>
             <Text style={s.headerName}>{otherName}</Text>
-            <View style={s.onlinePill}>
-              <View style={s.onlineDot} />
-              <Text style={s.onlineText}>Online</Text>
-            </View>
+            <Text style={s.onlineText}>Active Now</Text>
           </View>
         </View>
       </View>
 
       {/* Messages */}
-      {loading ? (
-        <View style={s.loadingContainer}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => String(item.id)}
-          contentContainerStyle={s.messageList}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          ListEmptyComponent={
-            <View style={s.emptyBox}>
-              <Text style={s.emptyIcon}>👋</Text>
-              <Text style={s.emptyText}>Start the conversation!</Text>
-            </View>
-          }
-          renderItem={({ item }) => {
-            const me = isMe(item);
-            const timeStr = new Date(item.created_at).toLocaleTimeString('en-IN', {
-              hour: '2-digit', minute: '2-digit',
-            });
-            return (
-              <View style={[s.bubbleRow, me ? s.bubbleRowMe : s.bubbleRowThem]}>
-                {!me && (
-                  <View style={s.senderAvatar}>
-                    <Text style={s.senderAvatarText}>{otherInitial}</Text>
-                  </View>
-                )}
-                <View style={[s.bubble, me ? s.bubbleMe : s.bubbleThem]}>
-                  <Text style={[s.bubbleText, me ? s.bubbleTextMe : s.bubbleTextThem]}>
-                    {item.content}
-                  </Text>
-                  <Text style={[s.bubbleTime, me ? s.bubbleTimeMe : s.bubbleTimeThem]}>
-                    {timeStr}
-                  </Text>
-                </View>
+      <View style={s.chatBackground}>
+        {loading ? (
+          <View style={s.loadingContainer}>
+            <ActivityIndicator color={colors.primary} size="large" />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={item => String(item.id)}
+            contentContainerStyle={s.messageList}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            ListEmptyComponent={
+              <View style={s.emptyBox}>
+                <Ionicons name="chatbubbles-outline" size={48} color={colors.textMuted} style={{marginBottom: 10}} />
+                <Text style={s.emptyText}>Send a message to start</Text>
               </View>
-            );
-          }}
-        />
+            }
+            renderItem={renderMessage}
+          />
+        )}
+      </View>
+
+      {/* Reply Preview */}
+      {replyTo && (
+        <View style={s.replyPreview}>
+          <View style={s.replyIconWrap}>
+             <Ionicons name="arrow-undo" size={20} color={colors.primary} />
+          </View>
+          <View style={s.replyContent}>
+            <Text style={s.replySenderPreview}>{replyTo.sender_name}</Text>
+            <Text style={s.replyTextPreview} numberOfLines={1}>{replyTo.content || 'Attachment'}</Text>
+          </View>
+          <TouchableOpacity onPress={() => setReplyTo(null)} style={s.replyClose}>
+            <Ionicons name="close-circle" size={24} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Input Bar */}
-      <View style={[s.inputBar, inputFocused && s.inputBarFocused]}>
-        <TextInput
-          style={s.input}
-          placeholder="Type a message..."
-          placeholderTextColor={colors.textMuted}
-          value={text}
-          onChangeText={setText}
-          multiline
-          maxLength={500}
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-          onSubmitEditing={sendMessage}
-        />
-        <TouchableOpacity
-          style={[s.sendBtn, !text.trim() && s.sendBtnDisabled]}
+      <View style={s.inputContainerWrapper}>
+        <View style={s.inputBar}>
+          <TextInput
+            style={s.input}
+            placeholder="Type a message..."
+            placeholderTextColor={colors.textMuted}
+            value={text}
+            onChangeText={setText}
+            multiline
+          />
+          <TouchableOpacity onPress={pickImage} style={s.iconBtn}>
+            <Ionicons name="image-outline" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+          style={[s.micSendBtn, { opacity: text.trim() ? 1 : 0.6 }]} 
           onPress={sendMessage}
           disabled={!text.trim()}
-          activeOpacity={0.85}
         >
-          <Text style={s.sendBtnText}>➤</Text>
+          <Ionicons name="arrow-up" size={22} color="#FFF" />
         </TouchableOpacity>
       </View>
+
+      {/* Context Menu Modal */}
+      <Modal transparent visible={!!selectedMessage} animationType="slide">
+        <TouchableOpacity style={s.modalOverlay} onPress={() => setSelectedMessage(null)} activeOpacity={1}>
+          <View style={s.contextMenu}>
+            <View style={s.contextDragHandle} />
+            <Text style={s.contextHeader}>Message Actions</Text>
+            <TouchableOpacity style={s.contextItem} onPress={handleReply}>
+              <View style={s.contextIconWrap}>
+                <Ionicons name="arrow-undo" size={22} color={colors.primary} />
+              </View>
+              <Text style={s.contextText}>Reply to Message</Text>
+            </TouchableOpacity>
+            
+            {/* The user wants to copy text natively with selectable={true}, but we can leave a visual hint or just keep reply */}
+            <View style={{height: 10}} />
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </KeyboardAvoidingView>
   );
 };
@@ -168,120 +268,163 @@ const createStyles = (colors: any) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceElevated,
-    paddingTop: spacing['10'],
-    paddingBottom: spacing['4'],
-    paddingHorizontal: spacing['4'],
-    borderBottomWidth: 1,
-    borderColor: colors.border,
-    gap: spacing['3'],
+    backgroundColor: colors.surface,
+    paddingTop: Platform.OS === 'ios' ? 55 : 35,
+    paddingBottom: 15,
+    paddingHorizontal: 10,
+    gap: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, elevation: 2,
   },
-  backBtn: {
-    width: 40, height: 40, borderRadius: radius.full,
-    backgroundColor: colors.surface, justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: colors.border,
-  },
-  backText: { color: colors.text, fontSize: 20, fontWeight: typography.weight.bold },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: spacing['3'] },
+  backBtn: { padding: 5, marginLeft: -5 },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
   headerAvatar: {
-    width: 44, height: 44, borderRadius: radius.full,
-    backgroundColor: colors.primary + '25',
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.primary + '20', // Very light primary tint
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: colors.primary + '50',
     overflow: 'hidden',
   },
   headerAvatarImage: { width: 44, height: 44 },
-  headerAvatarText: {
-    color: colors.primary, fontWeight: typography.weight.extrabold, fontSize: typography.size.xl,
-  },
-  headerName: {
-    fontSize: typography.size.base, fontWeight: typography.weight.extrabold, color: colors.text,
-  },
-  onlinePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2,
-  },
-  onlineDot: {
-    width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success,
-  },
-  onlineText: {
-    fontSize: typography.size.xs, color: colors.success, fontWeight: typography.weight.medium,
-  },
+  headerAvatarText: { color: colors.primary, fontWeight: '700', fontSize: 18 },
+  headerName: { fontSize: 18, fontWeight: '700', color: colors.text },
+  onlineText: { fontSize: 12, color: colors.primary, fontWeight: '600' },
 
+  chatBackground: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  messageList: { padding: 15, paddingBottom: 25, gap: 8 },
+  emptyBox: { alignItems: 'center', marginTop: 100, opacity: 0.6 },
+  emptyText: { color: colors.textMuted, fontSize: 16, fontWeight: '500' },
 
-  messageList: { padding: spacing['4'], paddingBottom: spacing['2'], gap: spacing['2'] },
-
-  emptyBox: { alignItems: 'center', marginTop: 80 },
-  emptyIcon: { fontSize: 50, marginBottom: spacing['3'] },
-  emptyText: { color: colors.textMuted, fontSize: typography.size.sm },
-
-  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing['2'] },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', marginVertical: 3 },
   bubbleRowMe: { justifyContent: 'flex-end' },
   bubbleRowThem: { justifyContent: 'flex-start' },
 
-  senderAvatar: {
-    width: 28, height: 28, borderRadius: radius.full,
-    backgroundColor: colors.accent + '25',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: colors.accent + '40',
-  },
-  senderAvatarText: { color: colors.accent, fontSize: typography.size.xs, fontWeight: typography.weight.extrabold },
-
   bubble: {
-    maxWidth: '75%', borderRadius: radius.lg,
-    paddingHorizontal: spacing['3'],
-    paddingVertical: spacing['2'] + 2,
+    maxWidth: '78%', 
+    paddingHorizontal: 16, 
+    paddingVertical: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 1
   },
-  bubbleMe: {
-    backgroundColor: colors.primary,
-    borderBottomRightRadius: 4,
-    shadowColor: colors.primary, shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25, shadowRadius: 6, elevation: 4,
+  bubbleMe: { 
+    backgroundColor: colors.primary, 
+    borderRadius: 24,
+    borderBottomRightRadius: 6, 
   },
-  bubbleThem: {
-    backgroundColor: colors.surfaceElevated,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1, borderColor: colors.glassBorder,
+  bubbleThem: { 
+    backgroundColor: colors.surface, 
+    borderRadius: 24,
+    borderBottomLeftRadius: 6, 
+    borderWidth: 1,
+    borderColor: colors.border + '40'
   },
-  bubbleText: { fontSize: typography.size.sm, lineHeight: typography.lineHeight.normal },
-  bubbleTextMe: { color: colors.white },
-  bubbleTextThem: { color: colors.text },
-  bubbleTime: {
-    fontSize: typography.size.xs, marginTop: 4, textAlign: 'right',
-  },
-  bubbleTimeMe: { color: 'rgba(255,255,255,0.6)' },
+  
+  bubbleText: { fontSize: 16, lineHeight: 22 },
+  bubbleTextMe: { color: '#FFF', fontWeight: '400' },
+  bubbleTextThem: { color: colors.text, fontWeight: '400' },
+  
+  bubbleTime: { fontSize: 11, marginTop: 4, textAlign: 'right', alignSelf: 'flex-end', fontWeight: '600' },
+  bubbleTimeMe: { color: 'rgba(255,255,255,0.7)' },
   bubbleTimeThem: { color: colors.textMuted },
 
-  inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end',
-    padding: spacing['3'], gap: spacing['2'],
-    backgroundColor: colors.surfaceElevated,
-    borderTopWidth: 1, borderColor: colors.border,
+  chatImage: { width: 220, height: 220, borderRadius: 16, marginVertical: 4 },
+
+  replyBoxInline: { 
+    borderLeftWidth: 3, 
+    padding: 8, 
+    borderRadius: 8, 
+    marginBottom: 8 
   },
-  inputBarFocused: {
-    borderTopColor: colors.primary + '60',
+  replyBoxInlineMe: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderLeftColor: '#FFF', 
   },
-  input: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing['4'],
-    paddingVertical: spacing['2'] + 2,
-    fontSize: typography.size.sm,
-    maxHeight: 100,
-    color: colors.text,
-    borderWidth: 1.5,
-    borderColor: colors.border,
+  replyBoxInlineThem: {
+    backgroundColor: colors.background,
+    borderLeftColor: colors.primary, 
   },
-  sendBtn: {
-    width: 44, height: 44, borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: colors.primary, shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35, shadowRadius: 8, elevation: 5,
+  replySenderInline: { fontWeight: 'bold', fontSize: 13, marginBottom: 2 },
+  replySenderInlineMe: { color: '#FFF' },
+  replySenderInlineThem: { color: colors.primary },
+  
+  replyTextInline: { fontSize: 13 },
+  replyTextInlineMe: { color: 'rgba(255,255,255,0.9)' },
+  replyTextInlineThem: { color: colors.textMuted },
+
+  replyPreview: { 
+    flexDirection: 'row', 
+    backgroundColor: colors.surface, 
+    padding: 12, 
+    marginHorizontal: 15, 
+    borderRadius: 16, 
+    alignItems: 'center', 
+    marginBottom: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,
+    borderWidth: 1,
+    borderColor: colors.border + '60'
   },
-  sendBtnDisabled: { backgroundColor: colors.textMuted, shadowOpacity: 0 },
-  sendBtnText: { color: colors.white, fontSize: 16 },
+  replyIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary + '15', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  replyContent: { flex: 1 },
+  replySenderPreview: { color: colors.primary, fontWeight: 'bold', fontSize: 14, marginBottom: 2 },
+  replyTextPreview: { color: colors.textMuted, fontSize: 14 },
+  replyClose: { padding: 5 },
+
+  inputContainerWrapper: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-end', 
+    paddingHorizontal: 15, 
+    paddingBottom: Platform.OS === 'ios' ? 30 : 15, 
+    paddingTop: 5,
+    backgroundColor: colors.background, 
+    gap: 10 
+  },
+  inputBar: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: colors.surface, 
+    borderRadius: 26, 
+    paddingLeft: 20, 
+    paddingRight: 6, 
+    minHeight: 52, 
+    borderWidth: 1,
+    borderColor: colors.border + '70',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1
+  },
+  iconBtn: { padding: 10 },
+  input: { 
+    flex: 1, 
+    maxHeight: 120, 
+    minHeight: 40, 
+    fontSize: 16, 
+    color: colors.text, 
+    paddingTop: Platform.OS === 'ios' ? 14 : 12, 
+    paddingBottom: Platform.OS === 'ios' ? 14 : 12 
+  },
+  
+  micSendBtn: { 
+    width: 48, height: 48, 
+    borderRadius: 24, 
+    backgroundColor: colors.primary, 
+    justifyContent: 'center', alignItems: 'center', 
+    shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 4,
+    marginBottom: 2
+  },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  contextMenu: { 
+    backgroundColor: colors.surface, 
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 25, 
+    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -5 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 20 
+  },
+  contextDragHandle: { width: 40, height: 5, backgroundColor: colors.border, borderRadius: 3, alignSelf: 'center', marginBottom: 20 },
+  contextHeader: { fontSize: 15, color: colors.textMuted, fontWeight: '700', marginBottom: 15, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
+  contextItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 15 },
+  contextIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + '15', justifyContent: 'center', alignItems: 'center' },
+  contextText: { fontSize: 17, color: colors.text, fontWeight: '600' }
 });
 
 export default ChatScreen;

@@ -176,11 +176,32 @@ class LiveClassBookingSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.username', read_only=True)
+    attachment_url = serializers.SerializerMethodField()
+    reply_to_content = serializers.SerializerMethodField()
+    reply_to_sender = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender_name', 'content', 'created_at', 'is_read']
+        fields = ['id', 'sender_name', 'content', 'attachment', 'attachment_url', 'attachment_type', 'reply_to', 'reply_to_content', 'reply_to_sender', 'created_at', 'is_read']
         read_only_fields = ['created_at', 'sender_name']
+        
+    def get_attachment_url(self, obj):
+        if obj.attachment:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.attachment.url)
+            return obj.attachment.url
+        return None
+        
+    def get_reply_to_content(self, obj):
+        if obj.reply_to:
+            return obj.reply_to.content
+        return None
+        
+    def get_reply_to_sender(self, obj):
+        if obj.reply_to and obj.reply_to.sender:
+            return obj.reply_to.sender.username
+        return None
 
 class ChatRoomSerializer(serializers.ModelSerializer):
     student_name = serializers.SerializerMethodField()
