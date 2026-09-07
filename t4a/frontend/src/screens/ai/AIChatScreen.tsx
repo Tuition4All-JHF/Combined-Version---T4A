@@ -201,7 +201,12 @@ export default function AIChatScreen({ navigation }: any) {
             code_inline: { backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 4, padding: 2, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
             code_block: { backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 8, padding: 8, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginBottom: 8 },
             blockquote: { borderLeftWidth: 4, borderLeftColor: colors.primary, paddingLeft: 10, fontStyle: 'italic', marginVertical: 8, marginLeft: 0 },
-            list_item: { marginBottom: 4 }
+            list_item: { marginBottom: 4 },
+            table: { borderWidth: 1, borderColor: colors.borderSubtle, borderRadius: 8, overflow: 'hidden', marginVertical: 10 },
+            thead: { backgroundColor: colors.surfaceElevated },
+            tr: { borderBottomWidth: 1, borderColor: colors.borderSubtle, flexDirection: 'row' },
+            th: { flex: 1, padding: 8, borderRightWidth: 1, borderColor: colors.borderSubtle, justifyContent: 'center', alignItems: 'center' },
+            td: { flex: 1, padding: 8, borderRightWidth: 1, borderColor: colors.borderSubtle },
           }}>
             {cleanContent}
           </Markdown>
@@ -359,6 +364,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 16,
     marginBottom: 12,
+    overflow: 'hidden',
   },
   messageText: {
     fontSize: 16,

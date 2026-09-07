@@ -56,31 +56,93 @@ def fmt_seconds(s):
     return f"{m}m {sec}s"
 
 
+def extract_text_from_image(file_path):
+    import base64
+    from groq import Groq
+    try:
+        with open(file_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        ext = file_path.split('.')[-1].lower()
+        mime_type = "image/jpeg"
+        if ext == "png": mime_type = "image/png"
+        elif ext == "webp": mime_type = "image/webp"
+        
+        api_keys_str = getattr(settings, 'GROQ_API_KEY', '') or os.environ.get('GROQ_API_KEY', '')
+        api_keys = [k.strip() for k in api_keys_str.split(',') if k.strip()]
+        if not api_keys:
+            return "[No API key configured for OCR]"
+            
+        vision_client = Groq(api_key=api_keys[0])
+        response = vision_client.chat.completions.create(
+            model="llama-3.2-11b-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Extract all the text visible in this image accurately. Do not add any conversational text. Just the extracted text."},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:{mime_type};base64,{encoded_string}",
+                            }
+                        }
+                    ]
+                }
+            ],
+            temperature=0.1,
+            max_tokens=1024,
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"Vision API Error: {e}")
+        return f"[Image OCR failed: {str(e)}]"
+
+
 def read_study_note_content(note):
     content = ""
     try:
         if getattr(note, 'file', None) and note.file.name and os.path.exists(note.file.path):
             file_path = note.file.path
-            if file_path.lower().endswith('.txt'):
+            
+            # Implement caching to avoid re-running OCR or PDF extraction
+            import hashlib
+            from django.core.cache import cache
+            
+            mtime = os.path.getmtime(file_path)
+            cache_key = f"note_content_{hashlib.md5(file_path.encode()).hexdigest()}_{mtime}"
+            cached_content = cache.get(cache_key)
+            
+            if cached_content is not None:
+                return cached_content
+            
+            ext = file_path.lower().split('.')[-1]
+            
+            if ext == 'txt':
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()
                 except Exception:
                     pass
-            elif file_path.lower().endswith('.pdf'):
+            elif ext == 'pdf':
                 try:
                     import PyPDF2
                     with open(file_path, 'rb') as f:
                         reader = PyPDF2.PdfReader(f)
                         content = "\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-                except Exception:
-                    content = "[PDF content extraction requires PyPDF2 installed]"
+                except Exception as e:
+                    content = f"[PDF extraction failed: {str(e)}]"
+            elif ext in ['jpg', 'jpeg', 'png', 'webp']:
+                content = extract_text_from_image(file_path)
             else:
                 try:
                     with open(file_path, 'r', encoding='utf-8') as f:
                         content = f.read()[:5000]
                 except Exception:
                     content = "[Binary or unsupported file format]"
+                    
+            # Cache the extracted content for 7 days
+            cache.set(cache_key, content, timeout=60*60*24*7)
     except Exception:
         pass
     return content
@@ -96,7 +158,7 @@ def get_student_context(user):
     except Exception:
         return "Student profile not found."
 
-    from courses.models import Project, ClassSummaryNote, RecordedClass, LiveClass, Course
+    from courses.models import Project, ClassSummaryNote, RecordedClass, LiveClass, Course, Enrollment
 
     # Bookings & Attendance
     bookings = Booking.objects.filter(student=profile).select_related('live_class__course__category', 'live_class__course__teacher__user').order_by('-booking_date')
@@ -124,6 +186,10 @@ def get_student_context(user):
         lines.append(f"• {date_str} | Subject: {subj} | Tutor: {tutor_name} | Status: {status} | Duration: {duration:.1f}m | {summary_txt}")
         if att: total_sessions += 1
 
+    enrollments = Enrollment.objects.filter(student=profile).select_related('course')
+    for e in enrollments:
+        courses.add(e.course)
+
     if total_sessions > 0:
         from core.utils import get_overall_attendance_percentage
         lines.append(f"\nOverall Average Attendance: {get_overall_attendance_percentage(profile)}%")
@@ -146,7 +212,11 @@ def get_student_context(user):
             lines.append(f"• '{p.title}' | Due: {p.due_date.strftime('%Y-%m-%d')} | {sub_info}\n  Desc: {p.description or 'No desc'}")
 
         # Study Notes
-        notes = StudyNote.objects.filter(course__in=courses).order_by('-uploaded_at')
+        from django.db.models import Q
+        notes = StudyNote.objects.filter(
+            Q(course__in=courses),
+            Q(assigned_to_all=True) | Q(assigned_students=profile)
+        ).distinct().order_by('-uploaded_at')
         lines.append(f"\n--- STUDY NOTES ({notes.count()} total) ---")
         for n in notes:
             lines.append(f"• '{n.title}' | Date: {n.uploaded_at.strftime('%Y-%m-%d')}\n  Content: {read_study_note_content(n)}")
@@ -193,6 +263,11 @@ def get_tutor_context(user):
     lines.append(f"\n--- PROJECTS CREATED ({projects.count()}) ---")
     for p in projects:
         lines.append(f"• '{p.title}' | Due: {p.due_date.strftime('%Y-%m-%d %H:%M') if p.due_date else 'N/A'} | Subs: {p.submissions.count()}")
+
+    notes = CourseNote.objects.filter(course__teacher=profile).order_by('-uploaded_at')
+    lines.append(f"\n--- STUDY NOTES UPLOADED ({notes.count()}) ---")
+    for n in notes:
+        lines.append(f"• '{n.title}' | Date: {n.uploaded_at.strftime('%Y-%m-%d')}\n  Content: {read_study_note_content(n)}")
 
     bookings = Booking.objects.filter(live_class__course__teacher=profile).select_related('student__user', 'live_class__course__category').order_by('student__user__username', '-booking_date')
     student_map = {}
@@ -245,6 +320,10 @@ def generate_system_prompt(user):
         "You ALREADY have access to the user's uploaded documents, assignments, and study notes in the context below. "
         "DO NOT EVER claim you cannot view, read, or download attached files. When a user asks you to analyze, summarize, or review a document, "
         "look for its content in the context below and provide the requested analysis based solely on that text.\n\n"
+        "🔥 **ANTI-HALLUCINATION PROTOCOL** 🔥:\n"
+        "DO NOT INVENT, GUESS, OR HALLUCINATE ANY DATA. If a user asks for a list of notes, assignments, or courses, "
+        "ONLY list the exact items explicitly provided in the context below. If the list is empty, say so explicitly. "
+        "Do not invent fake examples like 'Biology-Cell.pdf'.\n\n"
     )
 
     if user.role == 'student':
@@ -311,10 +390,12 @@ def chat_with_ai(session, user, message_content):
 
     # List of stable fallback models
     MODELS = [
+        "llama-3.1-8b-instant",
+        "llama-3.1-70b-versatile",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it",
+        "gpt-4o-mini",
         "openai/gpt-oss-20b",
-        "openai/gpt-oss-120b",
-        "groq/compound",
-        "groq/compound-mini",
         "qwen/qwen3.8-27b"
     ]
 
