@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, Modal, Image, StatusBar,
+  TextInput, Alert, Modal, Image, StatusBar, PanResponder
 } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useTheme } from '../../theme/ThemeContext';
@@ -33,6 +33,20 @@ const TutorPublicProfile = ({ route, navigation }: any) => {
 
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<number | null>(null);
+
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return gestureState.dy > 0 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dy > 40) {
+          setShowBookModal(false);
+        }
+      },
+    })
+  ).current;
 
   // Group slots by batch_id and time for display, but only first slot of each batch time is shown in list
   const getBatchedSlots = () => {
@@ -300,7 +314,9 @@ const TutorPublicProfile = ({ route, navigation }: any) => {
       <Modal visible={showBookModal} animationType="slide" transparent onRequestClose={() => setShowBookModal(false)}>
         <View style={s.modalOverlay}>
           <View style={s.modal}>
-            <View style={s.modalHandle} />
+            <View {...panResponder.panHandlers} style={{ width: '100%', paddingVertical: 10, alignItems: 'center', marginBottom: spacing['3'] }}>
+              <View style={[s.modalHandle, { marginBottom: 0 }]} />
+            </View>
             <Text style={s.modalTitle}>Book a Session</Text>
             <Text style={s.modalSub}>with {tutor.username}</Text>
 

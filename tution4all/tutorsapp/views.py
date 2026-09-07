@@ -745,7 +745,7 @@ class MessageListCreate(APIView):
             # Mark messages as read
             room.messages.exclude(sender=request.user).update(is_read=True)
             messages = room.messages.all()
-            return Response(MessageSerializer(messages, many=True).data)
+            return Response(MessageSerializer(messages, many=True, context={'request': request}).data)
         except ChatRoom.DoesNotExist:
             return Response({'detail': 'Room not found.'}, status=404)
 

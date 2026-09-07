@@ -135,7 +135,10 @@ class Message(models.Model):
     sender = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_messages'
     )
-    content = models.TextField()
+    content = models.TextField(blank=True, null=True)
+    attachment = models.FileField(upload_to='chat_attachments/', blank=True, null=True)
+    attachment_type = models.CharField(max_length=20, blank=True, null=True)
+    reply_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='replies')
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
 

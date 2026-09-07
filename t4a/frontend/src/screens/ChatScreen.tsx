@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +26,7 @@ const ChatScreen = ({ route, navigation }: any) => {
   // State for Context Menu & Replies
   const [replyTo, setReplyTo] = useState<any | null>(null);
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -32,7 +34,7 @@ const ChatScreen = ({ route, navigation }: any) => {
   const fetchMessages = () => {
     apiClient.get(`chat/rooms/${room.id}/messages/`)
       .then(res => {
-        setMessages(res.data);
+        setMessages(res.data.reverse());
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -127,7 +129,9 @@ const ChatScreen = ({ route, navigation }: any) => {
           )}
           
           {item.attachment_type === 'image' && item.attachment_url && (
-            <Image source={{ uri: item.attachment_url }} style={s.chatImage} />
+            <TouchableOpacity onPress={() => setFullscreenImage(item.attachment_url)} activeOpacity={0.8}>
+              <Image source={{ uri: item.attachment_url }} style={s.chatImage} />
+            </TouchableOpacity>
           )}
 
           {!!item.content && (
@@ -147,11 +151,12 @@ const ChatScreen = ({ route, navigation }: any) => {
   const s = createStyles(colors);
 
   return (
-    <KeyboardAvoidingView
-      style={s.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+    <SafeAreaView style={s.container} edges={['bottom', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={s.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
       {/* Header (T4A iMessage Style) */}
       <View style={s.header}>
@@ -183,10 +188,10 @@ const ChatScreen = ({ route, navigation }: any) => {
           <FlatList
             ref={flatListRef}
             data={messages}
+            inverted
             keyExtractor={item => String(item.id)}
             contentContainerStyle={s.messageList}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
             ListEmptyComponent={
               <View style={s.emptyBox}>
                 <Ionicons name="chatbubbles-outline" size={48} color={colors.textMuted} style={{marginBottom: 10}} />
@@ -258,7 +263,27 @@ const ChatScreen = ({ route, navigation }: any) => {
         </TouchableOpacity>
       </Modal>
 
-    </KeyboardAvoidingView>
+      {/* Fullscreen Image Modal */}
+      <Modal visible={!!fullscreenImage} transparent={true} animationType="fade" onRequestClose={() => setFullscreenImage(null)}>
+        <View style={s.fullscreenOverlay}>
+          <TouchableOpacity 
+            style={s.fullscreenCloseBtn} 
+            onPress={() => setFullscreenImage(null)}
+          >
+            <Ionicons name="close" size={32} color="#FFF" />
+          </TouchableOpacity>
+          {fullscreenImage && (
+            <Image 
+              source={{ uri: fullscreenImage }} 
+              style={s.fullscreenImage} 
+              resizeMode="contain" 
+            />
+          )}
+        </View>
+      </Modal>
+
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -424,7 +449,27 @@ const createStyles = (colors: any) => StyleSheet.create({
   contextHeader: { fontSize: 15, color: colors.textMuted, fontWeight: '700', marginBottom: 15, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 1 },
   contextItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, gap: 15 },
   contextIconWrap: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary + '15', justifyContent: 'center', alignItems: 'center' },
-  contextText: { fontSize: 17, color: colors.text, fontWeight: '600' }
+  contextText: { fontSize: 17, color: colors.text, fontWeight: '600' },
+
+  fullscreenOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '100%',
+    height: '100%',
+  },
+  fullscreenCloseBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+  },
 });
 
 export default ChatScreen;
