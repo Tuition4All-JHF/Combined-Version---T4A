@@ -120,9 +120,17 @@ const ChatScreen = ({ route, navigation }: any) => {
         onLongPress={() => setSelectedMessage(item)}
         style={[s.bubbleRow, me ? s.bubbleRowMe : s.bubbleRowThem]}
       >
-        <View style={[s.bubble, me ? s.bubbleMe : s.bubbleThem]}>
+        <View style={[
+          s.bubble, 
+          me ? s.bubbleMe : s.bubbleThem,
+          item.attachment_type === 'image' && s.bubbleWithImage
+        ]}>
           {item.reply_to_content && (
-            <View style={[s.replyBoxInline, me ? s.replyBoxInlineMe : s.replyBoxInlineThem]}>
+            <View style={[
+              s.replyBoxInline, 
+              me ? s.replyBoxInlineMe : s.replyBoxInlineThem,
+              item.attachment_type === 'image' && { marginHorizontal: 8, marginTop: 4 }
+            ]}>
               <Text style={[s.replySenderInline, me ? s.replySenderInlineMe : s.replySenderInlineThem]}>{item.reply_to_sender}</Text>
               <Text style={[s.replyTextInline, me ? s.replyTextInlineMe : s.replyTextInlineThem]} numberOfLines={1}>{item.reply_to_content || 'Attachment'}</Text>
             </View>
@@ -135,12 +143,20 @@ const ChatScreen = ({ route, navigation }: any) => {
           )}
 
           {!!item.content && (
-            <Text selectable={true} style={[s.bubbleText, me ? s.bubbleTextMe : s.bubbleTextThem]}>
+            <Text selectable={true} style={[
+              s.bubbleText, 
+              me ? s.bubbleTextMe : s.bubbleTextThem,
+              item.attachment_type === 'image' && { paddingHorizontal: 8, paddingTop: 6, paddingBottom: 2 }
+            ]}>
               {item.content}
             </Text>
           )}
           
-          <Text style={[s.bubbleTime, me ? s.bubbleTimeMe : s.bubbleTimeThem]}>
+          <Text style={[
+            s.bubbleTime, 
+            me ? s.bubbleTimeMe : s.bubbleTimeThem,
+            item.attachment_type === 'image' && { paddingHorizontal: 10, paddingBottom: 4 }
+          ]}>
             {timeStr}
           </Text>
         </View>
@@ -154,7 +170,7 @@ const ChatScreen = ({ route, navigation }: any) => {
     <SafeAreaView style={s.container} edges={['bottom', 'left', 'right']}>
       <KeyboardAvoidingView
         style={s.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
 
@@ -343,6 +359,11 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border + '40'
   },
+  bubbleWithImage: {
+    paddingHorizontal: 4,
+    paddingTop: 4,
+    paddingBottom: 4,
+  },
   
   bubbleText: { fontSize: 16, lineHeight: 22 },
   bubbleTextMe: { color: '#FFF', fontWeight: '400' },
@@ -352,7 +373,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   bubbleTimeMe: { color: 'rgba(255,255,255,0.7)' },
   bubbleTimeThem: { color: colors.textMuted },
 
-  chatImage: { width: 220, height: 220, borderRadius: 16, marginVertical: 4 },
+  chatImage: { width: 220, height: 220, borderRadius: 20 },
 
   replyBoxInline: { 
     borderLeftWidth: 3, 

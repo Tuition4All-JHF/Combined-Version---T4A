@@ -82,7 +82,7 @@ const ChatList = ({ navigation }: any) => {
             const initial = otherName?.[0]?.toUpperCase() || '?';
             const hasLastMsg = !!item.last_message;
             const lastMsgTime = hasLastMsg ? formatTime(item.last_message.created_at) : '';
-            const preview = item.last_message?.content || 'Start a conversation...';
+            const preview = item.last_message?.content || (item.last_message?.attachment_type === 'image' ? '📷 Photo' : 'Start a conversation...');
 
             return (
               <TouchableOpacity

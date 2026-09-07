@@ -244,7 +244,11 @@ class ChatRoomSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         msg = obj.messages.last()
         if msg:
-            return {'content': msg.content, 'created_at': msg.created_at}
+            return {
+                'content': msg.content, 
+                'created_at': msg.created_at,
+                'attachment_type': msg.attachment_type
+            }
         return None
         
     def get_tutor_photo(self, obj):

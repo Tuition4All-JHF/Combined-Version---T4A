@@ -262,25 +262,26 @@ export default function AIChatScreen({ navigation }: any) {
           </>
         )}
 
-        <View style={[styles.inputContainer, { backgroundColor: colors.surface }]}>
-          <TouchableOpacity
-            onPressOut={() => setIsRecording(false)}
-            style={styles.micButton}>
-            <Ionicons name="mic" size={22} color={isRecording ? 'red' : colors.text} />
-          </TouchableOpacity>
-          <TextInput
-            style={[styles.input, { color: colors.text }]}
-            placeholder="Type your question..."
-            placeholderTextColor={colors.textSecondary}
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-          />
+        <View style={[styles.inputContainerWrapper, { backgroundColor: colors.background }]}>
+          <View style={[styles.inputBar, { backgroundColor: colors.surface, borderColor: colors.border + '70' }]}>
+            <TextInput
+              style={[styles.input, { color: colors.text }]}
+              placeholder="Type your question..."
+              placeholderTextColor={colors.textSecondary}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+            />
+            <TouchableOpacity onPressOut={() => setIsRecording(false)} style={styles.iconBtn}>
+              <Ionicons name="mic-outline" size={24} color={isRecording ? 'red' : colors.primary} />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             onPress={handleSend}
             disabled={!inputText.trim() || isLoading}
-            style={[styles.sendButton, { backgroundColor: inputText.trim() && !isLoading ? colors.primary : colors.disabled }]}>
-            <Ionicons name="arrow-up" size={20} color="#FFF" />
+            style={[styles.micSendBtn, { opacity: inputText.trim() && !isLoading ? 1 : 0.6 }]}
+          >
+            <Ionicons name="arrow-up" size={22} color="#FFF" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -363,36 +364,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+  inputContainerWrapper: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-end', 
+    paddingHorizontal: 15, 
+    paddingBottom: Platform.OS === 'ios' ? 30 : 15, 
+    paddingTop: 5,
+    gap: 10 
   },
-  micButton: {
-    padding: 10,
+  inputBar: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    borderRadius: 26, 
+    paddingLeft: 20, 
+    paddingRight: 6, 
+    minHeight: 52, 
+    borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1
   },
+  iconBtn: { padding: 10 },
   input: {
     flex: 1,
-    maxHeight: 100,
+    maxHeight: 120,
     minHeight: 40,
     fontSize: 16,
-    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'ios' ? 14 : 12, 
+    paddingBottom: Platform.OS === 'ios' ? 14 : 12 
   },
-  sendButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+  micSendBtn: { 
+    width: 48, height: 48, 
+    borderRadius: 24, 
+    backgroundColor: '#6C63FF', // Primary color fallback
+    justifyContent: 'center', alignItems: 'center', 
+    shadowColor: '#6C63FF', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 4,
+    marginBottom: 2
   },
   drawerOverlay: {
     ...StyleSheet.absoluteFillObject,
